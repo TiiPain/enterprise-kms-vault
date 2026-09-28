@@ -1,124 +1,90 @@
-# Authenticated Enterprise Key Management Service (KMS) & Secret Vault
+# Enterprise KMS & Secret Vault
 
-**Academic Program**: ING5 SSIRE (Class of 2026) • Course: *Art of Protecting Secrets*  
-**Track**: Project 2: Protect (Secure Authentication & Cryptography System)  
-**Authors**: Ahmed Amine Ghenimi & Abdallah Dridi  
+[![Python](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688.svg)](https://fastapi.tiangolo.com/)
+[![Cryptography](https://img.shields.io/badge/Cryptography-AES--256--GCM-red.svg)](https://cryptography.io/)
+[![Security](https://img.shields.io/badge/Auth-Argon2id-orange.svg)](https://en.wikipedia.org/wiki/Argon2)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
----
-
-## 1. Executive Summary & Problem Statement
-
-In modern enterprise architectures, sensitive credentials (database passwords, external API tokens, private keys) are frequently mismanaged—stored in plaintext configuration files, insecure environment variables, or flat unencrypted database tables. If an unauthorized actor gains read access to the database or backups, the entire enterprise perimeter is compromised.
-
-This project delivers a **Secure Authentication & Cryptographic Storage System (KMS & Secret Vault)** patterned after enterprise architectures like AWS KMS and HashiCorp Vault. The system enforces:
-1. **Two-Tier Envelope Encryption** (AES-256-GCM) so secrets are never encrypted directly with a static key.
-2. **Zero-Knowledge Architecture & Anti-IDOR RBAC** ensuring administrators cannot view users' plaintext secrets and users cannot access unowned resources.
-3. **Defense-in-Depth Authentication** with Argon2id password hashing, rate limiting, and automatic 15-minute account lockouts.
-4. **Tamper-Evident Cryptographic Audit Logging** utilizing SHA-256 hash chaining and HMAC signatures to mathematically prove log integrity.
+An authenticated, production-grade **Key Management Service (KMS) & Secret Vault** built with Python and FastAPI. Patterned after AWS KMS and HashiCorp Vault, the service implements **two-tier envelope encryption**, **zero-knowledge role-based access control (RBAC)**, and **tamper-evident audit logging**.
 
 ---
 
-## 2. Core Cryptographic Architecture
+## Architecture & How It Works
 
-### Two-Tier Envelope Encryption Workflow
-Rather than encrypting all records with a single database-wide key, this platform employs a separation of concerns between Master Keys (Key Encryption Keys - KEKs) and transient Data Encryption Keys (DEKs):
+### Two-Tier Envelope Encryption
+Rather than encrypting all records under a static, shared database key, the vault uses an envelope encryption model that cryptographically decouples data encryption from key management:
 
 ```
-Write Secret Flow:
 [Plaintext Secret] + [Transient 256-bit DEK] ──(AES-256-GCM)──> [Ciphertext] + [Auth Tag] + [IV]
                                       │
                          [Master Key (KEK)] ──(AES-256-GCM)──> [Wrapped DEK] + [Tag] + [IV]
                                                                           │
-                                                                   [Plaintext DEK securely scrubbed]
+                                                                   [DEK scrubbed from memory]
                                                                           │
-                                                         Database stores: Wrapped DEK + Ciphertext + Nonces + Tags
+                                                         Database stores: Ciphertext, Wrapped DEK, IVs & Tags
 ```
 
-- **DEK (Data Encryption Key)**: A unique, cryptographically random 256-bit symmetric key (`AESGCM.generate_key(256)`) generated in-memory per secret. Scrubbed immediately after use.
-- **KEK (Key Encryption Key)**: Master key stored wrapped under the server's root environmental key (`SERVER_ROOT_KEK`).
-- **AES-256-GCM Authenticated Encryption**: Every operation generates a fresh 96-bit (12-byte) initialization vector (nonce) and outputs a 128-bit (16-byte) authentication tag, guaranteeing confidentiality and cryptographic integrity.
+1. **Data Encryption Key (DEK)**: A fresh 256-bit symmetric key generated in memory per secret write. It never touches persistent storage in plaintext.
+2. **Key Encryption Key (KEK)**: Long-lived Master Keys stored encrypted under the server's root environmental key.
+3. **Payload Protection**: Authenticated encryption via **AES-256-GCM** ensures that both confidentiality and cryptographic integrity are guaranteed. Any bit-level modification to stored ciphertext or tags causes decryption to immediately fail.
 
 ---
 
-## 3. Role-Based Access Control (RBAC) Matrix
+## Key Features
 
-| Endpoint | Method | Unauthenticated / Guest | Standard User | Security Auditor | Administrator |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| `/api/v1/auth/register` | POST | **Allowed** | Denied | Denied | Denied |
-| `/api/v1/auth/login` | POST | **Allowed** | Denied | Denied | Denied |
-| `/api/v1/secrets` | GET | 401 Unauthorized | **Allowed (Own Only)** | 403 Forbidden | 403 Forbidden *(Zero-Knowledge)* |
-| `/api/v1/secrets/{id}` | GET | 401 Unauthorized | **Allowed (Own Only)** | 403 Forbidden | 403 Forbidden *(Zero-Knowledge)* |
-| `/api/v1/secrets` | POST | 401 Unauthorized | **Allowed** | 403 Forbidden | 403 Forbidden |
-| `/api/v1/secrets/{id}` | DELETE | 401 Unauthorized | **Allowed (Own Only)** | 403 Forbidden | 403 Forbidden *(Zero-Knowledge)* |
-| `/api/v1/keys` | POST | 401 Unauthorized | 403 Forbidden | 403 Forbidden | **Allowed (Full Control)** |
-| `/api/v1/keys/{id}/rotate` | POST | 401 Unauthorized | 403 Forbidden | 403 Forbidden | **Allowed (Full Control)** |
-| `/api/v1/audit/logs` | GET | 401 Unauthorized | 403 Forbidden | **Allowed** | **Allowed** |
-| `/api/v1/audit/verify` | POST | 401 Unauthorized | 403 Forbidden | **Allowed** | **Allowed** |
-
-> **Anti-IDOR / Anti-BOLA Guarantee**: All secret operations query `WHERE id = :secret_id AND owner_id = :session_user_id`. Even administrators cannot decrypt or read secret payloads without the user's specific context.
+* **Authenticated Encryption (AES-256-GCM)**: Each secret payload is encrypted with a unique 96-bit random IV and verified against a 128-bit authentication tag.
+* **Defense-in-Depth Authentication**: Passwords hashed using memory-hard **Argon2id** with automatic account lockouts after consecutive failed attempts.
+* **Zero-Knowledge Access Control (Anti-IDOR)**: Strict object-level ownership checks. Vault administrators manage keys and user statuses but have zero access to read or decrypt user secrets.
+* **Tamper-Evident Audit Trails**: Audit events are cryptographically chained using SHA-256 hashes and signed with HMAC-SHA256, allowing mathematical proof of audit log integrity.
 
 ---
 
-## 4. Tamper-Evident Audit Trail (Cryptographic Chaining)
-
-Every security and cryptographic event is appended to an immutable audit chain:
-- **Hash Chaining**: `previous_record_hash = SHA-256(previous_record_hash || timestamp || actor_id || action || resource_id)`
-- **HMAC Signature**: `record_hmac = HMAC-SHA256(AUDIT_HMAC_SECRET, record_string)`
-- **Verification Endpoint (`/api/v1/audit/verify`)**: Iterates through the audit chain, independently recomputing all SHA-256 hashes and HMAC tags. If any record in SQLite was modified or deleted, the audit chain verification immediately pinpoints the exact tampered row.
-
----
-
-## 5. Live Defense Scenarios (Burp Suite & Forensics)
-
-1. **Direct SQLite Inspection**: Proves zero plaintext at rest. High-entropy base64 ciphertext, IVs, and tags are stored.
-2. **IDOR Privilege Escalation Attack**: Intercepting a `/api/v1/secrets/{id}` request with Burp Suite and replacing the ID with another user's secret yields a strict `403 Forbidden` / `404 Not Found`.
-3. **Ciphertext Bit-Flipping Integrity Test**: Modifying even a single character of stored ciphertext in SQLite causes the AES-GCM tag verification to throw `cryptography.exceptions.InvalidTag`, preventing corrupt decryption.
-4. **Brute-Force & Lockout Defense**: 5 consecutive failed login attempts trigger an immediate 15-minute account lockout logged in the cryptographic audit trail.
-
----
-
-## 6. Project Layout
+## Project Structure
 
 ```
 ├── app/
-│   ├── api/             # FastAPI routers (auth, secrets, keys, audit)
-│   ├── core/            # Security configs, Argon2id, RBAC dependencies
-│   ├── crypto/          # Envelope encryption (AES-256-GCM), HMAC audit chain
-│   ├── models/          # SQLAlchemy ORM models & Pydantic schemas
-│   ├── config.py        # Settings management via python-dotenv
-│   └── main.py          # FastAPI application factory & middleware
-├── docs/                # Threat models (STRIDE) and architecture specs
-├── tests/               # Pytest suite (crypto, RBAC/IDOR, audit verification)
-├── .env.example
-├── .gitignore
-├── requirements.txt
+│   ├── api/             # REST endpoints (auth, secrets, keys, audit)
+│   ├── core/            # Security configs, Argon2id hashing, RBAC guards
+│   ├── crypto/          # Envelope encryption engine & audit hash-chaining
+│   ├── models/          # SQLAlchemy ORM models & Pydantic validation schemas
+│   ├── config.py        # Centralized environment settings
+│   └── main.py          # FastAPI application entrypoint & middleware
+├── tests/               # Security and cryptographic unit tests
+├── .env.example         # Configuration template
+├── requirements.txt     # Python dependencies
 └── README.md
 ```
 
 ---
 
-## 7. Getting Started
+## Quickstart
 
-### Prerequisites
-- Python 3.11+ (Python 3.13 tested)
-- Git
+### 1. Prerequisites
+* Python 3.11+
+* Git
 
-### Installation
+### 2. Installation
 ```bash
 # Clone the repository
-git clone https://github.com/<your-username>/<repo-name>.git
-cd <repo-name>
+git clone https://github.com/TiiPain/enterprise-kms-vault.git
+cd enterprise-kms-vault
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Copy configuration
+# Configure environment variables
 copy .env.example .env
+```
 
-# Run unit and security test suite
+### 3. Run Test Suite
+```bash
 pytest -v
+```
 
-# Start the KMS Vault API server
+### 4. Start the API Server
+```bash
 uvicorn app.main:app --reload --port 8000
 ```
-Once started, explore the interactive OpenAPI / Swagger UI at `http://127.0.0.1:8000/docs`.
+
+The interactive OpenAPI documentation will be available at `http://127.0.0.1:8000/docs`.
