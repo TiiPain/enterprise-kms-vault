@@ -55,8 +55,8 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
-# Course PDFs & conversation notes
 *.pdf
 complete_conversation_and_project_knowledge.txt
+PROJECT_STATE_FOR_LAPTOP.md
 *.log
 
