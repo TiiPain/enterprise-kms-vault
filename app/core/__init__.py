@@ -7,6 +7,8 @@ from app.core.security import (
     record_failed_login,
     reset_failed_logins,
     generate_session_token,
+    create_session_token,
+    verify_session_token,
 )
 from app.core.rbac import Role, can_access_secret, require_role
 
@@ -18,6 +20,8 @@ __all__ = [
     "record_failed_login",
     "reset_failed_logins",
     "generate_session_token",
+    "create_session_token",
+    "verify_session_token",
     "Role",
     "can_access_secret",
     "require_role",

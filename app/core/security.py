@@ -7,10 +7,13 @@ Implements:
 4. Cryptographically secure session token generation.
 """
 
+import base64
+import hashlib
+import hmac
 import re
 import secrets
 from datetime import datetime, timedelta, timezone
-from typing import Tuple
+from typing import Optional, Tuple
 import argon2
 from argon2 import PasswordHasher
 from argon2.exceptions import VerificationError, VerifyMismatchError
@@ -143,3 +146,49 @@ def reset_failed_logins(db: Session, user: User) -> None:
 def generate_session_token() -> str:
     """Generate a cryptographically secure 256-bit URL-safe session token."""
     return secrets.token_urlsafe(32)
+
+
+def create_session_token(user_id: str, role: str) -> str:
+    """Create a tamper-proof cryptographically signed session token.
+
+    Encodes user_id, role, issue timestamp, and random nonce, signed with HMAC-SHA256.
+    """
+    now_ts = int(datetime.now(timezone.utc).timestamp())
+    nonce = secrets.token_hex(8)
+    payload = f"{user_id}:{role}:{now_ts}:{nonce}"
+    signature = hmac.new(
+        settings.SECRET_KEY.encode("utf-8"),
+        payload.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    raw = f"{payload}:{signature}"
+    return base64.urlsafe_b64encode(raw.encode("utf-8")).decode("utf-8")
+
+
+def verify_session_token(token: str) -> Optional[Tuple[str, str]]:
+    """Verify session token cryptographic signature and expiration.
+
+    Returns:
+        Optional[Tuple[str, str]]: (user_id, role) if valid, None if expired or tampered.
+    """
+    try:
+        raw = base64.urlsafe_b64decode(token.encode("utf-8")).decode("utf-8")
+        parts = raw.split(":")
+        if len(parts) != 5:
+            return None
+        user_id, role, ts_str, nonce, signature = parts
+        payload = f"{user_id}:{role}:{ts_str}:{nonce}"
+        expected_sig = hmac.new(
+            settings.SECRET_KEY.encode("utf-8"),
+            payload.encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+        if not hmac.compare_digest(signature, expected_sig):
+            return None
+        issued_at = int(ts_str)
+        now_ts = int(datetime.now(timezone.utc).timestamp())
+        if now_ts - issued_at > (settings.SESSION_EXPIRE_MINUTES * 60):
+            return None
+        return user_id, role
+    except Exception:
+        return None
