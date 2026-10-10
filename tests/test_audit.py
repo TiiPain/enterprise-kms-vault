@@ -101,8 +101,9 @@ class TestCryptographicAuditTrail:
         record_audit_event(audit_db, actor_id="admin", action="KEY_ROTATE", resource_id="key-v2")
 
         target = audit_db.execute(select(AuditLog).where(AuditLog.id == 1)).scalar_one()
-        # Flip first character of HMAC
-        target.record_hmac = "f" + target.record_hmac[1:]
+        # Flip first character of HMAC safely
+        flipped_char = "0" if target.record_hmac[0] != "0" else "1"
+        target.record_hmac = flipped_char + target.record_hmac[1:]
         audit_db.commit()
 
         verification = verify_audit_chain(audit_db)

@@ -337,3 +337,77 @@ class TestAPIAuditAndKeys:
         assert res_verify.status_code == 200
         assert res_verify.json()["valid"] is True
         assert res_verify.json()["total_records"] >= 1
+
+
+class TestAPISecurityHardeningAndDashboard:
+    """Security hardening headers, static UI dashboard, and live defense endpoints."""
+
+    def _register_and_login(self, client, username="bob", email="bob@test.com", password="SecureUser123!@#"):
+        client.post(
+            "/api/v1/auth/register",
+            json={"username": username, "email": email, "password": password},
+        )
+        res = client.post(
+            "/api/v1/auth/login",
+            json={"username": username, "password": password},
+        )
+        return {"Authorization": f"Bearer {res.json()['access_token']}"}
+
+    def test_security_headers_present_on_responses(self, client):
+        """Responses must include enterprise defensive headers (anti-clickjacking, CSP, etc.)."""
+        res = client.get("/health")
+        assert res.status_code == 200
+        assert res.headers.get("X-Content-Type-Options") == "nosniff"
+        assert res.headers.get("X-Frame-Options") == "DENY"
+        assert res.headers.get("X-XSS-Protection") == "1; mode=block"
+        assert "max-age=" in res.headers.get("Strict-Transport-Security", "")
+        assert "default-src" in res.headers.get("Content-Security-Policy", "")
+
+    def test_dashboard_serves_html_index(self, client):
+        """Root GET / serves the interactive single-page Web UI security console."""
+        res = client.get("/")
+        assert res.status_code == 200
+        assert "text/html" in res.headers.get("content-type", "")
+        assert "Enterprise KMS &amp; Secret Vault" in res.text or "Enterprise KMS & Secret Vault" in res.text
+
+    def test_inspect_raw_secret_record_step1(self, client):
+        """GET /secrets/{id}/raw returns encrypted ciphertext and nonces without plaintext."""
+        headers = self._register_and_login(client, "alice_raw", "alice_raw@test.com")
+        res_create = client.post(
+            "/api/v1/secrets",
+            json={"secret_name": "RawSecretTest", "plaintext": "SuperSecretPlaintext123"},
+            headers=headers,
+        )
+        secret_id = res_create.json()["id"]
+
+        res_raw = client.get(f"/api/v1/secrets/{secret_id}/raw", headers=headers)
+        assert res_raw.status_code == 200
+        raw_data = res_raw.json()
+        assert raw_data["id"] == secret_id
+        assert "encrypted_payload" in raw_data
+        assert "encrypted_dek" in raw_data
+        assert "payload_nonce" in raw_data
+        assert "payload_tag" in raw_data
+        # Plaintext must not be exposed in raw inspection
+        assert "SuperSecretPlaintext123" not in raw_data.values()
+
+    def test_simulate_bit_tamper_endpoint_step3(self, client):
+        """POST /secrets/{id}/simulate-tamper corrupts SQLite ciphertext and triggers InvalidTag."""
+        headers = self._register_and_login(client, "alice_tamper", "alice_tamper@test.com")
+        res_create = client.post(
+            "/api/v1/secrets",
+            json={"secret_name": "TamperEndpointTest", "plaintext": "OriginalSecretPayload"},
+            headers=headers,
+        )
+        secret_id = res_create.json()["id"]
+
+        # Corrupt ciphertext byte via demo simulation endpoint
+        res_tamper = client.post(f"/api/v1/secrets/{secret_id}/simulate-tamper", headers=headers)
+        assert res_tamper.status_code == 200
+        assert "Ciphertext bit tampered successfully" in res_tamper.json()["message"]
+
+        # Attempt to decrypt the tampered secret -> AES-GCM tag verification must fail (HTTP 400)
+        res_decrypt = client.get(f"/api/v1/secrets/{secret_id}", headers=headers)
+        assert res_decrypt.status_code == 400
+        assert "Cryptographic integrity verification failed" in res_decrypt.json()["detail"]
+

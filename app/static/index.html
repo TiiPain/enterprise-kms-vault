@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enterprise KMS & Secret Vault - Security Console</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              500: '#10b981',
+              600: '#059669',
+              900: '#064e3b',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col">
+
+  <!-- Navigation Bar -->
+  <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+          <i class="fa-solid fa-shield-halved text-xl"></i>
+        </div>
+        <div>
+          <span class="font-bold text-lg tracking-tight bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">Enterprise KMS & Vault</span>
+          <span class="text-xs ml-2 px-2 py-0.5 rounded bg-emerald-950 border border-emerald-800 text-emerald-300 font-medium">ING5 SSIRE</span>
+        </div>
+      </div>
+      
+      <!-- User State & Session Badge -->
+      <div id="user-header-section" class="flex items-center space-x-4">
+        <div id="auth-status-badge" class="text-sm px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-400 flex items-center space-x-2">
+          <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+          <span>Unauthenticated</span>
+        </div>
+        <button id="logout-btn" onclick="logoutUser()" class="hidden text-xs px-3 py-1.5 rounded-md bg-rose-950 border border-rose-800 text-rose-300 hover:bg-rose-900 transition">
+          <i class="fa-solid fa-right-from-bracket mr-1"></i> Logout
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <nav class="bg-slate-900/60 border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 flex space-x-2">
+      <button onclick="switchTab('tab-auth')" id="btn-tab-auth" class="tab-btn py-3 px-4 text-sm font-medium border-b-2 border-emerald-500 text-emerald-400 flex items-center space-x-2">
+        <i class="fa-solid fa-user-lock"></i><span>1. Auth & Lockout Hub</span>
+      </button>
+      <button onclick="switchTab('tab-vault')" id="btn-tab-vault" class="tab-btn py-3 px-4 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-2">
+        <i class="fa-solid fa-vault"></i><span>2. Secret Vault</span>
+      </button>
+      <button onclick="switchTab('tab-defense')" id="btn-tab-defense" class="tab-btn py-3 px-4 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-2">
+        <i class="fa-solid fa-microchip"></i><span>3. Defense & Bit-Tamper Lab</span>
+      </button>
+      <button onclick="switchTab('tab-audit')" id="btn-tab-audit" class="tab-btn py-3 px-4 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-2">
+        <i class="fa-solid fa-link"></i><span>4. Cryptographic Audit Chain</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Global Alert Banner -->
+  <div id="global-alert" class="hidden max-w-7xl mx-auto w-full px-4 mt-4">
+    <div id="global-alert-box" class="p-4 rounded-lg flex items-start space-x-3 border">
+      <i id="global-alert-icon" class="text-lg mt-0.5"></i>
+      <div class="flex-1 text-sm font-medium" id="global-alert-msg"></div>
+      <button onclick="hideAlert()" class="text-slate-400 hover:text-slate-200"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+  </div>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
+
+    <!-- ===================================================================== -->
+    <!-- TAB 1: AUTHENTICATION & BRUTE-FORCE LOCKOUT HUB                        -->
+    <!-- ===================================================================== -->
+    <div id="tab-auth" class="tab-pane space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Login Card -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl">
+          <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
+            <h3 class="font-semibold text-lg text-slate-200 flex items-center space-x-2">
+              <i class="fa-solid fa-right-to-bracket text-emerald-400"></i>
+              <span>Account Login</span>
+            </h3>
+            <span class="text-xs text-slate-500">Argon2id + 15m Lockout</span>
+          </div>
+
+          <form onsubmit="handleLogin(event)" class="space-y-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Username</label>
+              <input type="text" id="login-username" required class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-emerald-500 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Password</label>
+              <input type="password" id="login-password" required class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-emerald-500 text-sm">
+            </div>
+            <button type="submit" class="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-semibold rounded-lg text-sm transition flex items-center justify-center space-x-2">
+              <i class="fa-solid fa-key"></i><span>Sign In</span>
+            </button>
+          </form>
+
+          <!-- Quick Test Credentials -->
+          <div class="mt-6 pt-4 border-t border-slate-800/80">
+            <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">Live Demo Switcher:</span>
+            <div class="grid grid-cols-3 gap-2">
+              <button onclick="fillLogin('alice_dev', 'AliceSecretPassword!2026')" class="text-xs px-2 py-1.5 bg-slate-800 hover:bg-slate-700 rounded text-slate-300 text-center">User (Alice)</button>
+              <button onclick="fillLogin('superadmin', 'AdminSecurePassword123!')" class="text-xs px-2 py-1.5 bg-slate-800 hover:bg-slate-700 rounded text-amber-300 text-center">Admin</button>
+              <button onclick="fillLogin('security_auditor', 'AuditorSecurePassword123!')" class="text-xs px-2 py-1.5 bg-slate-800 hover:bg-slate-700 rounded text-cyan-300 text-center">Auditor</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Registration Card -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl">
+          <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
+            <h3 class="font-semibold text-lg text-slate-200 flex items-center space-x-2">
+              <i class="fa-solid fa-user-plus text-cyan-400"></i>
+              <span>Register Account</span>
+            </h3>
+            <span class="text-xs text-slate-500">Argon2id (m=64MB, t=2, p=2)</span>
+          </div>
+
+          <form onsubmit="handleRegister(event)" class="space-y-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Username</label>
+              <input type="text" id="reg-username" required class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-cyan-500 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Email Address</label>
+              <input type="email" id="reg-email" required class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-cyan-500 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Password</label>
+              <input type="password" id="reg-password" oninput="checkPasswordStrength(this.value)" required class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-cyan-500 text-sm">
+              <!-- Password strength meter -->
+              <div class="mt-2 space-y-1">
+                <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                  <div id="pwd-meter" class="h-full bg-rose-500 w-0 transition-all duration-300"></div>
+                </div>
+                <div id="pwd-feedback" class="text-xs text-slate-400">Min 12 characters, uppercase, lowercase, number, symbol.</div>
+              </div>
+            </div>
+            <button type="submit" class="w-full py-2.5 px-4 bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-semibold rounded-lg text-sm transition flex items-center justify-center space-x-2">
+              <i class="fa-solid fa-shield-check"></i><span>Create Account</span>
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Lockout Defense Monitor -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl">
+        <h4 class="font-semibold text-base text-slate-300 mb-3 flex items-center space-x-2">
+          <i class="fa-solid fa-fingerprint text-rose-400"></i>
+          <span>Live Brute-Force Defensive Status (Oral Defense Step 4)</span>
+        </h4>
+        <div class="bg-slate-950 p-4 rounded-lg border border-slate-800 text-sm flex items-center justify-between">
+          <div>
+            <span class="text-slate-400">Threshold Rule:</span>
+            <span class="font-semibold text-slate-200 ml-1">5 consecutive failed attempts</span>
+            <span class="mx-2 text-slate-600">•</span>
+            <span class="text-slate-400">Lockout Duration:</span>
+            <span class="font-semibold text-amber-400 ml-1">15 minutes</span>
+          </div>
+          <div id="lockout-indicator" class="text-xs px-3 py-1 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 font-semibold">
+            STATUS: ACTIVE DEFENSE GUARDED
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 2: SECRET VAULT MANAGER                                           -->
+    <!-- ===================================================================== -->
+    <div id="tab-vault" class="tab-pane hidden space-y-6">
+      <!-- Create Secret Box -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl">
+        <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
+          <h3 class="font-semibold text-lg text-slate-200 flex items-center space-x-2">
+            <i class="fa-solid fa-lock text-emerald-400"></i>
+            <span>Encrypt & Store Secret (Two-Tier Envelope KMS)</span>
+          </h3>
+          <span class="text-xs px-2.5 py-1 rounded bg-slate-800 text-emerald-300 font-mono">AES-256-GCM + Transient DEK</span>
+        </div>
+
+        <form onsubmit="handleCreateSecret(event)" class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Secret Name / Alias</label>
+              <input type="text" id="secret-name" required placeholder="e.g. ProductionDatabasePassword" class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-emerald-500 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Master Key (KEK)</label>
+              <input type="text" id="secret-key-id" value="k-default-root-v1" class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-400 text-sm" readonly>
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Plaintext Credential Payload</label>
+            <textarea id="secret-plaintext" rows="2" required placeholder="Enter sensitive API key, password, or confidential string..." class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-emerald-500 text-sm mono"></textarea>
+          </div>
+          <button type="submit" class="py-2.5 px-6 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-semibold rounded-lg text-sm transition flex items-center space-x-2">
+            <i class="fa-solid fa-shield-virus"></i><span>Envelope Encrypt & Save</span>
+          </button>
+        </form>
+      </div>
+
+      <!-- Secret List -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl">
+        <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
+          <h3 class="font-semibold text-lg text-slate-200 flex items-center space-x-2">
+            <i class="fa-solid fa-list-check text-cyan-400"></i>
+            <span>Stored Vault Secrets</span>
+          </h3>
+          <button onclick="fetchSecrets()" class="text-xs px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded flex items-center space-x-1">
+            <i class="fa-solid fa-rotate"></i><span>Refresh</span>
+          </button>
+        </div>
+
+        <div id="secrets-container" class="space-y-3">
+          <div class="text-sm text-slate-500 text-center py-8">Log in as a standard user to view your encrypted secrets.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 3: LIVE DEFENSE & BIT-TAMPER LAB (DEFENSE DEMO 1, 2, 3)          -->
+    <!-- ===================================================================== -->
+    <div id="tab-defense" class="tab-pane hidden space-y-6">
+      <div class="bg-gradient-to-r from-emerald-950/40 via-slate-900 to-cyan-950/40 border border-emerald-800/40 rounded-xl p-6 shadow-xl">
+        <h3 class="text-xl font-bold text-slate-100 flex items-center space-x-3 mb-2">
+          <i class="fa-solid fa-flask-vial text-emerald-400"></i>
+          <span>Live Oral Defense Cryptographic Demonstration Lab</span>
+        </h3>
+        <p class="text-sm text-slate-400">
+          This panel is dedicated to demonstrating the 3 core defense proofs to the jury: 
+          <strong>Step 1 (Zero Plaintext at Rest)</strong>, <strong>Step 2 (Anti-IDOR Blocking)</strong>, and <strong>Step 3 (AES-256-GCM Tag Verification Failure)</strong>.
+        </p>
+      </div>
+
+      <!-- Live Database Record Inspector (Step 1) -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
+          <h4 class="font-semibold text-base text-slate-200 flex items-center space-x-2">
+            <i class="fa-solid fa-database text-amber-400"></i>
+            <span>Oral Defense Step 1: Storage at Rest Inspection</span>
+          </h4>
+          <span class="text-xs px-2.5 py-0.5 rounded bg-emerald-950 border border-emerald-800 text-emerald-300">Zero Plaintext Verified</span>
+        </div>
+        <p class="text-xs text-slate-400 mb-4">
+          Select any of your vault secrets below to inspect the raw database record on screen. Notice that raw payloads and DEKs are 100% encrypted:
+        </p>
+
+        <div class="space-y-4">
+          <div class="flex space-x-3">
+            <select id="inspect-secret-select" class="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200"></select>
+            <button onclick="inspectSelectedSecret()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-slate-950 font-semibold text-sm rounded-lg flex items-center space-x-1">
+              <i class="fa-solid fa-magnifying-glass"></i><span>Inspect DB Row</span>
+            </button>
+          </div>
+
+          <!-- Raw Fields Display -->
+          <div id="db-raw-inspector" class="hidden bg-slate-950 border border-slate-800 rounded-lg p-4 space-y-3 mono text-xs">
+            <div>
+              <span class="text-slate-500 uppercase tracking-wide">Encrypted Payload (AES-256-GCM Ciphertext):</span>
+              <div id="raw-ciphertext" class="p-2 bg-slate-900 rounded text-emerald-400 break-all mt-1"></div>
+            </div>
+            <div>
+              <span class="text-slate-500 uppercase tracking-wide">Wrapped DEK (Encrypted by Master KEK):</span>
+              <div id="raw-wrapped-dek" class="p-2 bg-slate-900 rounded text-cyan-400 break-all mt-1"></div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <span class="text-slate-500 uppercase tracking-wide">Payload 96-bit Nonce (IV):</span>
+                <div id="raw-nonce" class="p-2 bg-slate-900 rounded text-slate-300 break-all mt-1"></div>
+              </div>
+              <div>
+                <span class="text-slate-500 uppercase tracking-wide">128-bit Authentication Tag:</span>
+                <div id="raw-tag" class="p-2 bg-slate-900 rounded text-amber-300 break-all mt-1"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bit-Flipping Tampering Test (Step 3) -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
+          <h4 class="font-semibold text-base text-slate-200 flex items-center space-x-2">
+            <i class="fa-solid fa-triangle-exclamation text-rose-400"></i>
+            <span>Oral Defense Step 3: Direct Ciphertext Bit-Tampering</span>
+          </h4>
+          <span class="text-xs px-2.5 py-0.5 rounded bg-rose-950 border border-rose-800 text-rose-300">InvalidTag Rejection</span>
+        </div>
+        <p class="text-xs text-slate-400 mb-4">
+          Simulate a malicious attacker altering a single byte of ciphertext in SQLite, then attempt to decrypt it. AES-256-GCM authenticated tag verification must immediately reject the request with HTTP 400.
+        </p>
+
+        <div class="flex space-x-3">
+          <button onclick="tamperAndDecrypt()" class="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold text-sm rounded-lg flex items-center space-x-2 transition shadow-lg shadow-rose-900/30">
+            <i class="fa-solid fa-bug"></i><span>Execute Bit-Tamper & Decrypt Test</span>
+          </button>
+        </div>
+
+        <div id="tamper-result-box" class="hidden mt-4 p-4 rounded-lg border text-sm font-mono"></div>
+      </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 4: CRYPTOGRAPHIC AUDIT CHAIN VISUALIZER                            -->
+    <!-- ===================================================================== -->
+    <div id="tab-audit" class="tab-pane hidden space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl">
+        <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
+          <div>
+            <h3 class="font-semibold text-lg text-slate-200 flex items-center space-x-2">
+              <i class="fa-solid fa-link text-emerald-400"></i>
+              <span>Cryptographic Tamper-Evident Audit Trail</span>
+            </h3>
+            <p class="text-xs text-slate-400 mt-1">
+              Immutable SHA-256 hash chaining: <code class="text-emerald-400">H_i = SHA-256(H_{i-1} || timestamp || actor || action || resource)</code> signed via HMAC-SHA256.
+            </p>
+          </div>
+          <button onclick="verifyAuditChain()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-semibold text-sm rounded-lg flex items-center space-x-2 transition shadow-lg shadow-emerald-900/20">
+            <i class="fa-solid fa-badge-check"></i><span>Verify Chain Integrity</span>
+          </button>
+        </div>
+
+        <div id="audit-verify-status" class="hidden mb-4 p-4 rounded-lg border text-sm flex items-center justify-between"></div>
+
+        <!-- Audit Table -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-950 text-slate-400 uppercase tracking-wider border-b border-slate-800">
+              <tr>
+                <th class="py-3 px-4"># ID</th>
+                <th class="py-3 px-4">Timestamp (UTC)</th>
+                <th class="py-3 px-4">Action</th>
+                <th class="py-3 px-4">Actor</th>
+                <th class="py-3 px-4">Resource</th>
+                <th class="py-3 px-4">SHA-256 Hash Chain</th>
+                <th class="py-3 px-4">HMAC Signature</th>
+              </tr>
+            </thead>
+            <tbody id="audit-table-body" class="divide-y divide-slate-800/60 font-mono">
+              <tr>
+                <td colspan="7" class="py-8 text-center text-slate-500">Log in as an Administrator or Auditor to view the audit trail.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="bg-slate-900 border-t border-slate-800 py-4 text-center text-xs text-slate-500">
+    ING5 SSIRE (Class of 2026) • Track 02: Protect • Authenticated Enterprise KMS & Secret Vault
+  </footer>
+
+  <!-- Application Logic -->
+  <script>
+    let currentAuthToken = localStorage.getItem("vault_token") || null;
+    let currentUser = null;
+
+    // Initialize
+    window.addEventListener("DOMContentLoaded", () => {
+      checkSession();
+    });
+
+    function showAlert(msg, type = "success") {
+      const alert = document.getElementById("global-alert");
+      const box = document.getElementById("global-alert-box");
+      const icon = document.getElementById("global-alert-icon");
+      const text = document.getElementById("global-alert-msg");
+
+      alert.classList.remove("hidden");
+      text.innerText = msg;
+
+      if (type === "success") {
+        box.className = "p-4 rounded-lg flex items-start space-x-3 border bg-emerald-950/80 border-emerald-800 text-emerald-200";
+        icon.className = "fa-solid fa-circle-check text-emerald-400 text-lg mt-0.5";
+      } else if (type === "error") {
+        box.className = "p-4 rounded-lg flex items-start space-x-3 border bg-rose-950/80 border-rose-800 text-rose-200";
+        icon.className = "fa-solid fa-triangle-exclamation text-rose-400 text-lg mt-0.5";
+      } else {
+        box.className = "p-4 rounded-lg flex items-start space-x-3 border bg-amber-950/80 border-amber-800 text-amber-200";
+        icon.className = "fa-solid fa-circle-exclamation text-amber-400 text-lg mt-0.5";
+      }
+    }
+
+    function hideAlert() {
+      document.getElementById("global-alert").classList.add("hidden");
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll(".tab-pane").forEach(el => el.classList.add("hidden"));
+      document.querySelectorAll(".tab-btn").forEach(el => {
+        el.classList.remove("border-emerald-500", "text-emerald-400");
+        el.classList.add("border-transparent", "text-slate-400");
+      });
+
+      document.getElementById(tabId).classList.remove("hidden");
+      const activeBtn = document.getElementById("btn-" + tabId);
+      activeBtn.classList.remove("border-transparent", "text-slate-400");
+      activeBtn.classList.add("border-emerald-500", "text-emerald-400");
+
+      if (tabId === "tab-vault") fetchSecrets();
+      if (tabId === "tab-audit") fetchAuditLogs();
+      if (tabId === "tab-defense") loadDefenseSecretsDropdown();
+    }
+
+    async function apiRequest(endpoint, method = "GET", body = null) {
+      const headers = { "Content-Type": "application/json" };
+      if (currentAuthToken) {
+        headers["Authorization"] = `Bearer ${currentAuthToken}`;
+      }
+
+      const options = { method, headers };
+      if (body) options.body = JSON.stringify(body);
+
+      const res = await fetch(endpoint, options);
+      const data = await res.json().catch(() => ({}));
+      return { ok: res.ok, status: res.status, data };
+    }
+
+    async function checkSession() {
+      if (!currentAuthToken) {
+        updateAuthUI(null);
+        return;
+      }
+      const { ok, data } = await apiRequest("/api/v1/auth/me");
+      if (ok) {
+        currentUser = data;
+        updateAuthUI(data);
+      } else {
+        logoutUser();
+      }
+    }
+
+    function updateAuthUI(user) {
+      const badge = document.getElementById("auth-status-badge");
+      const logoutBtn = document.getElementById("logout-btn");
+
+      if (user) {
+        currentUser = user;
+        let roleColor = user.role === "ADMIN" ? "amber" : user.role === "AUDITOR" ? "cyan" : "emerald";
+        badge.className = `text-sm px-3 py-1 rounded-full bg-${roleColor}-950 border border-${roleColor}-800 text-${roleColor}-300 flex items-center space-x-2 font-medium`;
+        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-${roleColor}-400"></span><span>${user.username} (${user.role})</span>`;
+        logoutBtn.classList.remove("hidden");
+      } else {
+        currentUser = null;
+        badge.className = "text-sm px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-400 flex items-center space-x-2";
+        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-400"></span><span>Unauthenticated</span>`;
+        logoutBtn.classList.add("hidden");
+      }
+    }
+
+    function fillLogin(u, p) {
+      document.getElementById("login-username").value = u;
+      document.getElementById("login-password").value = p;
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const u = document.getElementById("login-username").value;
+      const p = document.getElementById("login-password").value;
+
+      const { ok, status, data } = await apiRequest("/api/v1/auth/login", "POST", { username: u, password: p });
+
+      if (ok) {
+        currentAuthToken = data.access_token;
+        localStorage.setItem("vault_token", currentAuthToken);
+        currentUser = data.user;
+        updateAuthUI(currentUser);
+        showAlert(`Successfully authenticated as ${currentUser.username} (${currentUser.role})`, "success");
+        switchTab("tab-vault");
+      } else {
+        if (status === 403) {
+          showAlert(`LOCKOUT ENFORCED: ${data.detail}`, "error");
+          document.getElementById("lockout-indicator").className = "text-xs px-3 py-1 rounded bg-rose-950 text-rose-300 border border-rose-800 font-semibold animate-pulse";
+          document.getElementById("lockout-indicator").innerText = "STATUS: BRUTE-FORCE LOCKOUT TRIGGERED";
+        } else {
+          showAlert(`Authentication Failed: ${data.detail}`, "error");
+        }
+      }
+    }
+
+    async function handleRegister(e) {
+      e.preventDefault();
+      const u = document.getElementById("reg-username").value;
+      const em = document.getElementById("reg-email").value;
+      const p = document.getElementById("reg-password").value;
+
+      const { ok, data } = await apiRequest("/api/v1/auth/register", "POST", { username: u, email: em, password: p });
+      if (ok) {
+        showAlert(`User ${data.username} registered with Argon2id protection! You can now log in.`, "success");
+        fillLogin(u, p);
+      } else {
+        showAlert(`Registration Error: ${data.detail}`, "error");
+      }
+    }
+
+    function checkPasswordStrength(p) {
+      const meter = document.getElementById("pwd-meter");
+      const fb = document.getElementById("pwd-feedback");
+      let score = 0;
+      if (p.length >= 12) score += 25;
+      if (/[A-Z]/.test(p)) score += 25;
+      if (/[0-9]/.test(p)) score += 25;
+      if (/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(p)) score += 25;
+
+      meter.style.width = score + "%";
+      if (score < 50) {
+        meter.className = "h-full bg-rose-500";
+        fb.innerText = "Weak: minimum 12 chars with upper, lower, numbers, and symbols.";
+      } else if (score < 100) {
+        meter.className = "h-full bg-amber-500";
+        fb.innerText = "Moderate: add missing character types to meet enterprise policy.";
+      } else {
+        meter.className = "h-full bg-emerald-500";
+        fb.innerText = "Strong enterprise password compliant with security policy.";
+      }
+    }
+
+    function logoutUser() {
+      currentAuthToken = null;
+      localStorage.removeItem("vault_token");
+      apiRequest("/api/v1/auth/logout", "POST");
+      updateAuthUI(null);
+      showAlert("Logged out successfully.", "info");
+      switchTab("tab-auth");
+    }
+
+    async function handleCreateSecret(e) {
+      e.preventDefault();
+      const name = document.getElementById("secret-name").value;
+      const plain = document.getElementById("secret-plaintext").value;
+
+      const { ok, data } = await apiRequest("/api/v1/secrets", "POST", { secret_name: name, plaintext: plain });
+      if (ok) {
+        showAlert(`Secret '${data.secret_name}' protected under AES-256-GCM envelope encryption!`, "success");
+        document.getElementById("secret-name").value = "";
+        document.getElementById("secret-plaintext").value = "";
+        fetchSecrets();
+      } else {
+        showAlert(`Secret Creation Failed: ${data.detail}`, "error");
+      }
+    }
+
+    async function fetchSecrets() {
+      const container = document.getElementById("secrets-container");
+      if (!currentAuthToken) {
+        container.innerHTML = `<div class="text-sm text-slate-500 text-center py-8">Log in as a standard user to view your encrypted secrets.</div>`;
+        return;
+      }
+
+      const { ok, data } = await apiRequest("/api/v1/secrets");
+      if (!ok) {
+        container.innerHTML = `<div class="text-sm text-rose-400 text-center py-8">${data.detail}</div>`;
+        return;
+      }
+
+      if (data.length === 0) {
+        container.innerHTML = `<div class="text-sm text-slate-500 text-center py-8">No secrets stored in your vault yet. Create one above!</div>`;
+        return;
+      }
+
+      container.innerHTML = data.map(sec => `
+        <div class="p-4 bg-slate-950 border border-slate-800 rounded-lg flex items-center justify-between">
+          <div>
+            <div class="font-semibold text-sm text-slate-200">${sec.secret_name}</div>
+            <div class="text-xs text-slate-500 font-mono mt-0.5">ID: ${sec.id} • KEK: ${sec.key_id}</div>
+            <div id="revealed-${sec.id}" class="hidden mt-2 p-2 bg-slate-900 border border-emerald-900/50 text-emerald-300 font-mono text-xs rounded break-all"></div>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button onclick="revealSecret('${sec.id}')" class="text-xs px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded flex items-center space-x-1">
+              <i class="fa-solid fa-eye"></i><span>Reveal</span>
+            </button>
+            <button onclick="deleteSecret('${sec.id}')" class="text-xs px-2.5 py-1.5 bg-rose-950 hover:bg-rose-900 text-rose-300 rounded">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    async function revealSecret(id) {
+      const targetDiv = document.getElementById(`revealed-${id}`);
+      if (!targetDiv.classList.contains("hidden")) {
+        targetDiv.classList.add("hidden");
+        return;
+      }
+
+      const { ok, data } = await apiRequest(`/api/v1/secrets/${id}`);
+      if (ok) {
+        targetDiv.innerHTML = `<span class="text-slate-400 select-none">Plaintext: </span>${escapeHtml(data.plaintext)}`;
+        targetDiv.classList.remove("hidden");
+      } else {
+        showAlert(`Decryption Error: ${data.detail}`, "error");
+      }
+    }
+
+    async function deleteSecret(id) {
+      if (!confirm("Are you sure you want to permanently delete this secret?")) return;
+      const { ok } = await apiRequest(`/api/v1/secrets/${id}`, "DELETE");
+      if (ok) {
+        showAlert("Secret deleted permanently.", "success");
+        fetchSecrets();
+      }
+    }
+
+    async function loadDefenseSecretsDropdown() {
+      const select = document.getElementById("inspect-secret-select");
+      const { ok, data } = await apiRequest("/api/v1/secrets");
+      if (ok && data.length > 0) {
+        select.innerHTML = data.map(s => `<option value="${s.id}">${s.secret_name} (${s.id.substring(0, 8)}...)</option>`).join("");
+      } else {
+        select.innerHTML = `<option value="">No secrets available</option>`;
+      }
+    }
+
+    async function inspectSelectedSecret() {
+      const id = document.getElementById("inspect-secret-select").value;
+      if (!id) return;
+
+      const { ok, data } = await apiRequest(`/api/v1/secrets/${id}/raw`);
+      const inspector = document.getElementById("db-raw-inspector");
+      if (ok) {
+        document.getElementById("raw-ciphertext").innerText = data.encrypted_payload;
+        document.getElementById("raw-wrapped-dek").innerText = data.encrypted_dek;
+        document.getElementById("raw-nonce").innerText = data.payload_nonce;
+        document.getElementById("raw-tag").innerText = data.payload_tag;
+        inspector.classList.remove("hidden");
+      } else {
+        showAlert(`Inspect Error: ${data.detail}`, "error");
+      }
+    }
+
+    async function tamperAndDecrypt() {
+      const id = document.getElementById("inspect-secret-select").value;
+      if (!id) {
+        showAlert("Please select a secret first to execute bit-tampering.", "warning");
+        return;
+      }
+
+      const box = document.getElementById("tamper-result-box");
+      box.className = "p-4 rounded-lg border bg-slate-950 border-slate-800 text-xs font-mono text-slate-300";
+      box.innerHTML = `<div class="animate-pulse">Modifying ciphertext bit in SQLite and requesting decryption...</div>`;
+      box.classList.remove("hidden");
+
+      // 1. Trigger bit tamper
+      await apiRequest(`/api/v1/secrets/${id}/simulate-tamper`, "POST");
+
+      // 2. Attempt decryption
+      const { ok, status, data } = await apiRequest(`/api/v1/secrets/${id}`);
+
+      if (!ok && status === 400) {
+        box.className = "p-4 rounded-lg border bg-rose-950/70 border-rose-800 text-xs font-mono text-rose-200";
+        box.innerHTML = `
+          <div class="font-bold text-sm text-rose-400 mb-1">❌ DEFENSE PROOF: CRYPTOGRAPHIC INTEGRITY VERIFICATION FAILED</div>
+          <div>Status: HTTP 400 Bad Request</div>
+          <div>Exception: cryptography.exceptions.InvalidTag</div>
+          <div>Server Message: "${data.detail}"</div>
+          <div class="mt-2 text-slate-300">Galois Counter Mode (GCM) authentication tag failed verification. Decryption immediately halted to protect system integrity.</div>
+        `;
+      } else {
+        box.className = "p-4 rounded-lg border bg-amber-950 border-amber-800 text-xs font-mono text-amber-200";
+        box.innerHTML = `<div>Decryption returned HTTP ${status}: ${JSON.stringify(data)}</div>`;
+      }
+    }
+
+    async function fetchAuditLogs() {
+      const tbody = document.getElementById("audit-table-body");
+      const { ok, data } = await apiRequest("/api/v1/audit/logs");
+
+      if (!ok) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-rose-400">${data.detail}</td></tr>`;
+        return;
+      }
+
+      if (data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-500">Audit trail is currently empty.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = data.map(log => `
+        <tr class="hover:bg-slate-900/40">
+          <td class="py-2.5 px-4 font-bold text-slate-400">${log.id}</td>
+          <td class="py-2.5 px-4 text-slate-400">${log.timestamp.replace("T", " ").substring(0, 19)}</td>
+          <td class="py-2.5 px-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${getBadgeClass(log.action)}">${log.action}</span></td>
+          <td class="py-2.5 px-4 text-slate-300">${log.actor_id.substring(0, 12)}...</td>
+          <td class="py-2.5 px-4 text-slate-500">${log.resource_id ? log.resource_id.substring(0, 12) + "..." : "NONE"}</td>
+          <td class="py-2.5 px-4 text-emerald-400/90">${log.previous_record_hash.substring(0, 16)}...</td>
+          <td class="py-2.5 px-4 text-cyan-400/90">${log.record_hmac.substring(0, 16)}...</td>
+        </tr>
+      `).join("");
+    }
+
+    async function verifyAuditChain() {
+      const statusDiv = document.getElementById("audit-verify-status");
+      statusDiv.classList.remove("hidden");
+      statusDiv.className = "mb-4 p-4 rounded-lg border bg-slate-950 border-slate-800 text-sm text-slate-300";
+      statusDiv.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> Verifying cryptographic SHA-256 hash chaining and HMAC signatures...`;
+
+      const { ok, data } = await apiRequest("/api/v1/audit/verify", "POST");
+      if (ok && data.valid) {
+        statusDiv.className = "mb-4 p-4 rounded-lg border bg-emerald-950/80 border-emerald-800 text-sm text-emerald-200 flex items-center justify-between";
+        statusDiv.innerHTML = `
+          <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-shield-check text-emerald-400 text-lg"></i>
+            <div>
+              <span class="font-bold">Cryptographic Audit Integrity Valid</span>
+              <span class="text-xs text-emerald-300 block">All ${data.total_records} records chained and signed without tampering.</span>
+            </div>
+          </div>
+          <span class="text-xs px-2.5 py-1 rounded bg-emerald-900 font-mono text-emerald-200">CHAIN 100% INTACT</span>
+        `;
+      } else {
+        statusDiv.className = "mb-4 p-4 rounded-lg border bg-rose-950/80 border-rose-800 text-sm text-rose-200";
+        statusDiv.innerHTML = `
+          <div class="font-bold text-rose-400">⚠️ Audit Trail Tampering Flagged!</div>
+          <div class="text-xs mt-1">Corrupted Record ID: ${data.corrupted_record_id || 'Unknown'}</div>
+          <div class="text-xs">${data.reason}</div>
+        `;
+      }
+    }
+
+    function getBadgeClass(action) {
+      if (action.includes("LOCKOUT") || action.includes("FAIL") || action.includes("BLOCKED")) return "bg-rose-950 text-rose-300 border border-rose-800";
+      if (action.includes("KEY")) return "bg-amber-950 text-amber-300 border border-amber-800";
+      if (action.includes("LOGIN")) return "bg-emerald-950 text-emerald-300 border border-emerald-800";
+      return "bg-slate-800 text-slate-300 border border-slate-700";
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+  </script>
+</body>
+</html>

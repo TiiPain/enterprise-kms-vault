@@ -264,3 +264,127 @@ def delete_secret(
     )
 
     return {"message": "Secret permanently deleted"}
+
+
+@router.get(
+    "/{secret_id}/raw",
+    summary="Inspect raw database record at rest (Zero-Knowledge: Ciphertext only, Oral Defense Step 1)",
+)
+def get_raw_secret_record(
+    secret_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Retrieve raw ciphertext, nonces, and wrapped DEK without decrypting (verifies zero plaintext at rest)."""
+    if current_user.role != Role.USER.value:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden: Zero-Knowledge policy denies non-user accounts access to secrets",
+        )
+
+    secret = db.execute(
+        select(VaultSecret).where(VaultSecret.id == secret_id)
+    ).scalar_one_or_none()
+
+    if not secret:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Secret not found",
+        )
+
+    if not can_access_secret(current_user.id, secret.owner_id, current_user.role):
+        record_audit_event(
+            db,
+            actor_id=current_user.id,
+            action="IDOR_ATTEMPT_BLOCKED",
+            resource_id=secret.id,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access forbidden: you do not have permission to inspect this secret",
+        )
+
+    record_audit_event(
+        db,
+        actor_id=current_user.id,
+        action="SECRET_RAW_INSPECT",
+        resource_id=secret.id,
+    )
+
+    return {
+        "id": secret.id,
+        "secret_name": secret.secret_name,
+        "owner_id": secret.owner_id,
+        "key_id": secret.key_id,
+        "encrypted_payload": secret.encrypted_payload,
+        "payload_nonce": secret.payload_nonce,
+        "payload_tag": secret.payload_tag,
+        "encrypted_dek": secret.encrypted_dek,
+        "dek_nonce": secret.dek_nonce,
+        "dek_tag": secret.dek_tag,
+        "created_at": secret.created_at,
+    }
+
+
+@router.post(
+    "/{secret_id}/simulate-tamper",
+    summary="Simulate malicious SQLite bit-tampering (Oral Defense Step 3)",
+)
+def simulate_bit_tamper(
+    secret_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Corrupt 1 byte in encrypted_payload to demonstrate AES-256-GCM authentication failure."""
+    import base64
+
+    if current_user.role != Role.USER.value:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden: Zero-Knowledge policy denies non-user accounts access to secrets",
+        )
+
+    secret = db.execute(
+        select(VaultSecret).where(VaultSecret.id == secret_id)
+    ).scalar_one_or_none()
+
+    if not secret:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Secret not found",
+        )
+
+    if not can_access_secret(current_user.id, secret.owner_id, current_user.role):
+        record_audit_event(
+            db,
+            actor_id=current_user.id,
+            action="IDOR_ATTEMPT_BLOCKED",
+            resource_id=secret.id,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access forbidden: you do not have permission to modify this secret",
+        )
+
+    # Decode ciphertext bytes, flip 1 byte, and write back
+    raw_bytes = bytearray(base64.b64decode(secret.encrypted_payload))
+    if len(raw_bytes) > 0:
+        raw_bytes[0] ^= 0x01
+    else:
+        raw_bytes = bytearray(b"\x01")
+
+    secret.encrypted_payload = base64.b64encode(bytes(raw_bytes)).decode("utf-8")
+    db.commit()
+    db.refresh(secret)
+
+    record_audit_event(
+        db,
+        actor_id=current_user.id,
+        action="SIMULATE_TAMPER_EXECUTED",
+        resource_id=secret.id,
+    )
+
+    return {
+        "message": "Ciphertext bit tampered successfully. Next decrypt request will fail AES-256-GCM verification.",
+        "secret_id": secret.id,
+    }
