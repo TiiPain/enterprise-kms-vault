@@ -1,7 +1,15 @@
 """Enterprise Key Management Service (KMS) & Secret Vault Application Entrypoint."""
 
 import os
+import sys
 from contextlib import asynccontextmanager
+from pathlib import Path
+
+# Ensure project root is in sys.path regardless of execution directory
+PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
 from cryptography.exceptions import InvalidTag
 from fastapi import APIRouter, FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,9 +20,10 @@ from sqlalchemy import select
 from app.api import auth, keys, secrets, audit
 from app.api.keys import serialize_wrapped_key
 from app.config import settings
+from app.core.security import hash_password
 from app.crypto.audit_chain import record_audit_event
 from app.crypto.envelope import EnvelopeCryptoEngine
-from app.models.database import MasterKey, SessionLocal, engine, init_db
+from app.models.database import MasterKey, SessionLocal, User, engine, init_db
 
 
 def seed_default_master_key():
@@ -52,11 +61,51 @@ def seed_default_master_key():
         db.close()
 
 
+def seed_default_users():
+    """Seed default demo accounts (superadmin, security_auditor, alice_dev) if not already present."""
+    db = SessionLocal()
+    try:
+        # Seed Superadmin
+        admin = db.execute(select(User).where(User.username == "superadmin")).scalar_one_or_none()
+        if not admin:
+            db.add(User(
+                username="superadmin",
+                email="admin@enterprise.local",
+                password_hash=hash_password("AdminSecurePassword123!"),
+                role="ADMIN",
+            ))
+
+        # Seed Security Auditor
+        auditor = db.execute(select(User).where(User.username == "security_auditor")).scalar_one_or_none()
+        if not auditor:
+            db.add(User(
+                username="security_auditor",
+                email="auditor@enterprise.local",
+                password_hash=hash_password("AuditorSecurePassword123!"),
+                role="AUDITOR",
+            ))
+
+        # Seed Standard User (Alice)
+        alice = db.execute(select(User).where(User.username == "alice_dev")).scalar_one_or_none()
+        if not alice:
+            db.add(User(
+                username="alice_dev",
+                email="alice@enterprise.local",
+                password_hash=hash_password("AliceSecretPassword!2026"),
+                role="USER",
+            ))
+
+        db.commit()
+    finally:
+        db.close()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan context: initialize database schema and seed root keys."""
+    """Application lifespan context: initialize database schema, seed root keys and demo accounts."""
     init_db(engine)
     seed_default_master_key()
+    seed_default_users()
     yield
 
 

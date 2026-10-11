@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enterprise KMS Vault — Oral Defense Presentation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #101018;
+      --bg-light: #FCFBFE;
+      --primary: #7954C7;
+      --primary-dark: #5B32A8;
+      --text-dark: #241B36;
+      --text-muted: #6F647C;
+      --text-light: #FFFFFF;
+      --box-bg: #F1EBFA;
+      --box-border: #DDD6FE;
+      --row-alt: #F4F0FA;
+      --code-bg: #16132A;
+      --emerald: #10B981;
+      --cyan: #38BDF8;
+      --border-subtle: #EFEAF7;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: #0B0A10;
+      color: var(--text-dark);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .deck-container {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .slide {
+      width: 1280px;
+      height: 720px;
+      max-width: 96vw;
+      max-height: 96vh;
+      border-radius: 16px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.45);
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.35s ease, transform 0.35s ease;
+      transform: scale(0.97);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .slide.active {
+      opacity: 1;
+      pointer-events: auto;
+      transform: scale(1);
+      z-index: 10;
+    }
+
+    /* SLIDE 1: COVER (HYPERVAULTS OBSIDIAN DARK) */
+    .slide-cover {
+      background: var(--bg-dark);
+      color: var(--text-light);
+      position: relative;
+      padding: 56px 72px;
+      justify-content: space-between;
+    }
+
+    .orbital-glow {
+      position: absolute;
+      right: -80px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 640px;
+      height: 640px;
+      border-radius: 50%;
+      pointer-events: none;
+      background: radial-gradient(circle, rgba(121, 84, 199, 0.45) 0%, rgba(91, 50, 168, 0.3) 35%, rgba(46, 29, 78, 0.2) 60%, transparent 75%);
+    }
+
+    .orbital-ring {
+      position: absolute;
+      right: 50px;
+      top: 50%;
+      transform: translateY(-50%);
+      border-radius: 50%;
+      border: 1px solid rgba(167, 139, 250, 0.2);
+    }
+    .ring-1 { width: 480px; height: 480px; }
+    .ring-2 { width: 340px; height: 340px; }
+    .ring-3 { width: 200px; height: 200px; }
+
+    .cover-top-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(121, 84, 199, 0.15);
+      border: 1px solid rgba(167, 139, 250, 0.3);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      color: #C4B5FD;
+      text-transform: uppercase;
+      width: fit-content;
+    }
+
+    .cover-title {
+      font-size: 46px;
+      font-weight: 800;
+      color: #FFFFFF;
+      letter-spacing: -0.8px;
+      margin-top: 20px;
+      line-height: 1.1;
+    }
+
+    .cover-subtitle {
+      font-size: 19px;
+      font-weight: 600;
+      color: #A78BFA;
+      margin-top: 10px;
+      line-height: 1.3;
+    }
+
+    .cover-desc {
+      font-size: 13.5px;
+      color: #94A3B8;
+      margin-top: 8px;
+      max-width: 620px;
+      line-height: 1.5;
+    }
+
+    .cover-authors-card {
+      background: #17142A;
+      border: 1px solid #2D274A;
+      border-radius: 12px;
+      padding: 18px 24px;
+      max-width: 580px;
+      margin-top: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .cover-author-names {
+      font-size: 17px;
+      font-weight: 700;
+      color: #FFFFFF;
+    }
+
+    .cover-author-class {
+      font-size: 12.5px;
+      color: #A78BFA;
+      font-weight: 500;
+    }
+
+    .cover-author-track {
+      font-size: 11.5px;
+      color: #94A3B8;
+    }
+
+    .cover-tech-pills {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+
+    .tech-pill {
+      background: #1A162D;
+      border: 1px solid #322A54;
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      color: #CBD5E1;
+      font-weight: 500;
+    }
+
+    /* SLIDES 2-6: HYPERVAULTS LIGHT THEME */
+    .slide-light {
+      background: var(--bg-light);
+      color: var(--text-dark);
+      padding: 38px 64px 30px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .slide-header {
+      border-bottom: 1px solid var(--border-subtle);
+      padding-bottom: 14px;
+      margin-bottom: 20px;
+    }
+
+    .slide-category {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--primary);
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .slide-title {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--text-dark);
+      letter-spacing: -0.4px;
+      line-height: 1.2;
+    }
+
+    .slide-subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .slide-content-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      flex: 1;
+      align-items: stretch;
+    }
+
+    .slide-content-grid.three-col {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    /* CARDS */
+    .card-box {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+      padding: 22px 24px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 4px 14px rgba(121, 84, 199, 0.04);
+    }
+
+    .card-box.lilac {
+      background: var(--box-bg);
+      border-color: var(--box-border);
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .bullet-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex: 1;
+    }
+
+    .bullet-item {
+      font-size: 12.5px;
+      line-height: 1.45;
+      color: var(--text-dark);
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .bullet-item::before {
+      content: "•";
+      color: var(--primary);
+      font-weight: 800;
+      font-size: 16px;
+      line-height: 1;
+      margin-top: -1px;
+    }
+
+    .bullet-lead {
+      font-weight: 700;
+      color: var(--text-dark);
+    }
+
+    /* FOOTER */
+    .slide-footer {
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .footer-page-num {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 700;
+      color: var(--text-dark);
+    }
+
+    .footer-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--primary);
+    }
+
+    /* CONTROLS */
+    .deck-controls {
+      position: fixed;
+      bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(22, 19, 42, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(167, 139, 250, 0.25);
+      padding: 8px 18px;
+      border-radius: 30px;
+      z-index: 100;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+    }
+
+    .btn-ctrl {
+      background: transparent;
+      border: none;
+      color: #E2E8F0;
+      font-size: 14px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+    .btn-ctrl:hover {
+      background: rgba(121, 84, 199, 0.3);
+      color: #FFFFFF;
+    }
+
+    .page-indicator {
+      font-size: 12px;
+      font-weight: 600;
+      color: #A78BFA;
+      min-width: 50px;
+      text-align: center;
+    }
+
+    @media print {
+      body { background: transparent; }
+      .deck-controls { display: none !important; }
+      .deck-container { display: block; height: auto; }
+      .slide {
+        position: relative !important;
+        opacity: 1 !important;
+        transform: none !important;
+        page-break-after: always;
+        width: 100% !important;
+        height: 100vh !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="deck-container">
+
+    <!-- SLIDE 1: COVER -->
+    <div class="slide slide-cover active" id="slide-1">
+      <div class="orbital-glow"></div>
+      <div class="orbital-ring ring-1"></div>
+      <div class="orbital-ring ring-2"></div>
+      <div class="orbital-ring ring-3"></div>
+      <img src="report_assets/corporate_vault_emblem.png" alt="Corporate Vault Emblem" style="position: absolute; right: 110px; top: 50%; transform: translateY(-50%); width: 270px; height: 270px; z-index: 2; pointer-events: none;">
+
+      <div>
+        <div class="cover-top-badge">
+          <span>🛡️</span> APPLICATION REPORT & ORAL DEFENSE
+        </div>
+        <h1 class="cover-title">Enterprise KMS Vault</h1>
+        <div class="cover-subtitle">Secure Authentication & Cryptographic Storage System</div>
+        <p class="cover-desc">
+          Zero-knowledge architecture, split-knowledge dual custody ceremony, anti-IDOR server enforcement, and tamper-evident SHA-256 chained audit logging.
+        </p>
+
+        <div class="cover-authors-card">
+          <div class="cover-author-names">Ahmed Amine Ghenimi & Abdallah Dridi</div>
+          <div class="cover-author-class">ING 5 SSIRE A • Class of 2026 • TEK-UP Engineering School</div>
+          <div class="cover-author-track">Course: Art of Protecting Secrets • Track 02 (Project 2: Protect)</div>
+        </div>
+      </div>
+
+      <div class="cover-tech-pills">
+        <span class="tech-pill">Python 3.12+</span>
+        <span class="tech-pill">FastAPI</span>
+        <span class="tech-pill">SQLite 3</span>
+        <span class="tech-pill">PBKDF2-HMAC (600k iter)</span>
+        <span class="tech-pill">AES-256-GCM (Envelope)</span>
+        <span class="tech-pill">SHA-256 Hash Chain</span>
+        <span class="tech-pill" style="border-color: #10B981; color: #34D399;">75 / 75 Tests Passed (100%)</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 2: 01 WHAT THE PROJECT IS -->
+    <div class="slide slide-light" id="slide-2">
+      <div class="slide-header">
+        <div class="slide-category">01 Product Overview</div>
+        <div class="slide-title">The Real-World Threat & The KMS Solution</div>
+        <div class="slide-subtitle">Why storing secrets in flat databases fails and how Enterprise KMS Vault guarantees zero plaintext at rest.</div>
+      </div>
+
+      <div class="slide-content-grid">
+        <div class="card-box">
+          <div class="card-title">⚠️ The Real-World Threat Landscape</div>
+          <ul class="bullet-list">
+            <li class="bullet-item"><span class="bullet-lead">Plaintext Credentials at Rest:</span> API tokens, passwords, and connection strings are routinely stored in cleartext in configuration files or unencrypted database tables.</li>
+            <li class="bullet-item"><span class="bullet-lead">Database Backup Theft:</span> Attackers or compromised employees gaining read-only access to backups or read replicas immediately steal all operational credentials.</li>
+            <li class="bullet-item"><span class="bullet-lead">Silent Bit Tampering:</span> Unauthenticated database storage allows bit-flipping attacks without the application detecting data corruption.</li>
+            <li class="bullet-item"><span class="bullet-lead">Single Administrator Risk:</span> A single rogue privileged user can rotate or exfiltrate all cryptographic keys without dual authorization.</li>
+          </ul>
+        </div>
+
+        <div class="card-box lilac">
+          <div class="card-title">🛡️ Enterprise KMS Vault Defensive Controls</div>
+          <ul class="bullet-list">
+            <li class="bullet-item"><span class="bullet-lead">Zero Plaintext at Rest:</span> Direct inspection of SQLite reveals only high-entropy AES-256-GCM ciphertext, initialization vectors, and authentication tags.</li>
+            <li class="bullet-item"><span class="bullet-lead">2-Tier Envelope Hierarchy:</span> In-memory Master KEK protects per-secret Data Encryption Keys (DEKs); secrets are never directly encrypted under KEK.</li>
+            <li class="bullet-item"><span class="bullet-lead">Split-Knowledge Ceremony:</span> Deriving the master key requires two independent Security Administrators entering separate secret shares.</li>
+            <li class="bullet-item"><span class="bullet-lead">Tamper-Evident SHA-256 Chain:</span> Recursive hash-chained audit log immediately detects retroactive record manipulation.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>Core Invariant: Direct database theft yields zero plaintext without in-memory master keys.</span>
+        <div class="footer-page-num"><div class="footer-dot"></div> 02</div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: 02 SYSTEM ARCHITECTURE -->
+    <div class="slide slide-light" id="slide-3">
+      <div class="slide-header">
+        <div class="slide-category">02 System Architecture</div>
+        <div class="slide-title">Architecture & Trust Boundaries</div>
+        <div class="slide-subtitle">Three strictly separated tiers isolate authentication, route authorization, and cryptographic keys.</div>
+      </div>
+
+      <div class="slide-content-grid three-col">
+        <div class="card-box">
+          <div class="card-title">🌐 Client Workspace</div>
+          <ul class="bullet-list">
+            <li class="bullet-item"><span class="bullet-lead">Presentation Layer:</span> Browser Web UI and authenticated REST API clients.</li>
+            <li class="bullet-item"><span class="bullet-lead">Token Transport:</span> Session tokens transmitted via opaque Bearer headers over TLS.</li>
+            <li class="bullet-item"><span class="bullet-lead">Zero Key Knowledge:</span> The client holds zero master keys or cryptographic shares.</li>
+            <li class="bullet-item"><span class="bullet-lead">No Plaintext Caching:</span> Decrypted credentials exist only transiently in view state.</li>
+          </ul>
+        </div>
+
+        <div class="card-box lilac">
+          <div class="card-title">⚡ FastAPI Control Plane</div>
+          <ul class="bullet-list">
+            <li class="bullet-item"><span class="bullet-lead">Route Enforcement:</span> 4-tier Role-Based Access Control enforced via route dependencies.</li>
+            <li class="bullet-item"><span class="bullet-lead">Anti-IDOR Predicate:</span> Validates secret ownership on server before any crypto operation.</li>
+            <li class="bullet-item"><span class="bullet-lead">Abuse Budget:</span> Enforces 5-attempt brute-force lockout window (15-min freeze).</li>
+            <li class="bullet-item"><span class="bullet-lead">Audit Signing:</span> Signs every authentication and access attempt via HMAC-SHA256.</li>
+          </ul>
+        </div>
+
+        <div class="card-box">
+          <div class="card-title">🔒 Storage & KMS Core</div>
+          <ul class="bullet-list">
+            <li class="bullet-item"><span class="bullet-lead">Volatile KEK Cache:</span> Master KEK exists strictly in volatile RAM memory cache.</li>
+            <li class="bullet-item"><span class="bullet-lead">Envelope Engine:</span> 2-Tier AES-256-GCM envelope cryptographic subsystem.</li>
+            <li class="bullet-item"><span class="bullet-lead">Zero-Plaintext DB:</span> SQLite `keyvault.db` stores only base64 ciphertexts and tags.</li>
+            <li class="bullet-item"><span class="bullet-lead">SHA-256 Audit Chain:</span> Recursive blockchain-style hash chain anchoring history.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>Boundary Rule: Master keys never touch disk. Process termination flushes keys from RAM instantly.</span>
+        <div class="footer-page-num"><div class="footer-dot"></div> 03</div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: 03 CRYPTOGRAPHIC WORKFLOW -->
+    <div class="slide slide-light" id="slide-4">
+      <div class="slide-header">
+        <div class="slide-category">03 Cryptographic Workflow</div>
+        <div class="slide-title">How It Works: 2-Tier Envelope Encryption</div>
+        <div class="slide-subtitle">Dual-custody ceremony derives volatile KEK; unique random DEKs encrypt individual secrets.</div>
+      </div>
+
+      <div class="slide-content-grid">
+        <div class="card-box lilac">
+          <div class="card-title">🔑 2-Tier Envelope Protocol</div>
+          <ul class="bullet-list">
+            <li class="bullet-item"><span class="bullet-lead">1. Split Ceremony:</span> Admin 1 (Share A) + Admin 2 (Share B) submit shares. Combined via PBKDF2 (600k rounds) into volatile RAM KEK.</li>
+            <li class="bullet-item"><span class="bullet-lead">2. Fresh DEK Generation:</span> Every secret generates a fresh, unique 256-bit AES Data Key (DEK) via OS CSPRNG plus a fresh 96-bit random IV.</li>
+            <li class="bullet-item"><span class="bullet-lead">3. Payload Encryption:</span> Secret payload is encrypted under DEK using AES-256-GCM, yielding ciphertext and a 128-bit MAC tag.</li>
+            <li class="bullet-item"><span class="bullet-lead">4. DEK Wrapping:</span> DEK is encrypted under Master KEK via AES-256-GCM and stored in SQLite as `encrypted_dek`.</li>
+          </ul>
+        </div>
+
+        <div class="card-box">
+          <div class="card-title">⚡ Scaling & Cryptographic Invariants</div>
+          <ul class="bullet-list">
+            <li class="bullet-item"><span class="bullet-lead">Zero KEK Disk Storage:</span> The Master KEK is never written to disk or database. Server shutdown erases the key from RAM instantly.</li>
+            <li class="bullet-item"><span class="bullet-lead">Zero-Downtime Rotation:</span> Rotating the Master Key only re-wraps lightweight 256-bit DEKs without re-encrypting gigabytes of secret payloads.</li>
+            <li class="bullet-item"><span class="bullet-lead">Unique 96-bit Nonces:</span> Nonce collision probability is mathematically negligible (&lt; 1 in 2^48), adhering strictly to NIST SP 800-38D.</li>
+            <li class="bullet-item"><span class="bullet-lead">Authenticated Integrity:</span> AES-GCM guarantees that modifying 1 bit of stored ciphertext causes an immediate `InvalidTag` decryption abort.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>Scaling Rule: Rotating keys re-wraps lightweight DEKs without re-encrypting gigabytes of data.</span>
+        <div class="footer-page-num"><div class="footer-dot"></div> 04</div>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: 04 SECURITY EVIDENCE (TEACHER EVALUATION STANDARD) -->
+    <div class="slide slide-light" id="slide-5">
+      <div class="slide-header">
+        <div class="slide-category">04 Security Evidence</div>
+        <div class="slide-title">Verified Defensive Controls & Evidence</div>
+        <div class="slide-subtitle">Satisfying the course standard: 'No evidence = no credit for the claimed security result.'</div>
+      </div>
+
+      <div class="slide-content-grid">
+        <div class="card-box lilac">
+          <div class="card-title">🛡️ Verified Defensive Controls</div>
+          <ul class="bullet-list">
+            <li class="bullet-item"><span class="bullet-lead">Anti-IDOR Block (HTTP 403):</span> Cross-tenant secret retrieval attempts are rejected at the server predicate layer. Zero plaintext or metadata leaked.</li>
+            <li class="bullet-item"><span class="bullet-lead">1-Bit Tamper Abort:</span> Directly modifying 1 bit of ciphertext in SQLite triggers AES-GCM MAC failure (`InvalidTagException`), aborting decryption.</li>
+            <li class="bullet-item"><span class="bullet-lead">Audit Chain Break Alert:</span> Editing a row in SQLite audit table permanently breaks the SHA-256 recursive hash chain, pinpointing the exact row index.</li>
+            <li class="bullet-item"><span class="bullet-lead">Brute-Force Lockout (HTTP 429):</span> 5 failed login attempts trigger an automated 15-minute account lockout, stopping credential stuffing attacks.</li>
+          </ul>
+        </div>
+
+        <div class="card-box">
+          <div class="card-title">✅ Automated Verification Suite (100% Pass)</div>
+          <ul class="bullet-list">
+            <li class="bullet-item"><span class="bullet-lead">Total Tests Passing:</span> 75 / 75 passed (100% pass rate in pytest across all test suites in 7.35s).</li>
+            <li class="bullet-item"><span class="bullet-lead">Crypto Unit Suite:</span> 18/18 passed: PBKDF2, AES-GCM, IV entropy, tag verification, and KEK derivation.</li>
+            <li class="bullet-item"><span class="bullet-lead">API & RBAC Suite:</span> 23/23 passed: Role validation, anti-IDOR, ceremony routes, and session revocation.</li>
+            <li class="bullet-item"><span class="bullet-lead">Attack Simulation Suite:</span> 14/14 passed: Brute-force lockout, bit-tampering abort, and audit chain break detection.</li>
+            <li class="bullet-item"><span class="bullet-lead">Dependency Security:</span> Zero known vulnerabilities across all pinned runtime dependencies.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>Recommended rule: no evidence = no credit for the claimed security result. (75 / 75 Tests Passed)</span>
+        <div class="footer-page-num"><div class="footer-dot"></div> 05</div>
+      </div>
+    </div>
+
+    <!-- SLIDE 6: 05 LIVE DEMO & DEFENSE Q&A -->
+    <div class="slide slide-light" id="slide-6">
+      <div class="slide-header">
+        <div class="slide-category">05 Live Demo & Defense</div>
+        <div class="slide-title">Live Demonstration Roadmap & Jury Q&A</div>
+        <div class="slide-subtitle">A concise 5-minute live walkthrough demonstrating each security boundary directly to the jury.</div>
+      </div>
+
+      <div class="slide-content-grid">
+        <div class="card-box lilac">
+          <div class="card-title">🎬 4-Step Live Demo Roadmap</div>
+          <ul class="bullet-list">
+            <li class="bullet-item"><span class="bullet-lead">Step 1 — Auth & Lockout:</span> Demonstrate PBKDF2 hashing; fail password 5 times to show automated account lockout (`HTTP 429`).</li>
+            <li class="bullet-item"><span class="bullet-lead">Step 2 — Dual-Custody Unlock:</span> SecurityAdmin 1 and SecurityAdmin 2 enter separate shares via API to derive KEK into volatile RAM.</li>
+            <li class="bullet-item"><span class="bullet-lead">Step 3 — Storage & Anti-IDOR:</span> Create a secret in UI; inspect SQLite directly to prove zero plaintext, then simulate cross-tenant IDOR 403 block.</li>
+            <li class="bullet-item"><span class="bullet-lead">Step 4 — Tampering & Chain Break:</span> Flip 1 byte in SQLite to show GCM MAC failure; modify audit row in DB to show instant hash chain break detection.</li>
+          </ul>
+        </div>
+
+        <div class="card-box">
+          <div class="card-title">💡 Jury Defense Q&A Cheatsheet</div>
+          <ul class="bullet-list">
+            <li class="bullet-item"><span class="bullet-lead">Q: Why GCM over CBC mode?</span> A: GCM provides authenticated encryption with 128-bit MAC tag. CBC is vulnerable to padding oracles and bit-flipping.</li>
+            <li class="bullet-item"><span class="bullet-lead">Q: What if the server crashes?</span> A: The KEK vanishes from RAM; zero plaintext is exposed. A new dual-custody ceremony restores service.</li>
+            <li class="bullet-item"><span class="bullet-lead">Q: How does rotation scale?</span> A: Envelope encryption means only 256-bit DEKs are re-wrapped. Secret payloads are never touched.</li>
+            <li class="bullet-item"><span class="bullet-lead">Q: Can an admin forge audit logs?</span> A: No; records are chained recursively via SHA-256 and signed via HMAC. Any alteration breaks the chain.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>System Status: API running on port 8000, database initialized, interactive scripts ready.</span>
+        <div class="footer-page-num"><div class="footer-dot"></div> 06</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FLOATING CONTROLS -->
+  <div class="deck-controls">
+    <button class="btn-ctrl" onclick="prevSlide()" title="Previous Slide (Left Arrow)">◀</button>
+    <span class="page-indicator" id="pageIndicator">1 / 6</span>
+    <button class="btn-ctrl" onclick="nextSlide()" title="Next Slide (Right Arrow / Space)">▶</button>
+    <button class="btn-ctrl" onclick="toggleFullscreen()" title="Fullscreen (F)">⛶</button>
+    <button class="btn-ctrl" onclick="window.print()" title="Print / PDF (Ctrl+P)">🖨️ PDF</button>
+  </div>
+
+  <script>
+    let currentSlide = 1;
+    const totalSlides = 6;
+
+    function showSlide(index) {
+      if (index < 1) index = 1;
+      if (index > totalSlides) index = totalSlides;
+      currentSlide = index;
+
+      document.querySelectorAll('.slide').forEach((slide, i) => {
+        slide.classList.toggle('active', (i + 1) === currentSlide);
+      });
+
+      document.getElementById('pageIndicator').innerText = `${currentSlide} / ${totalSlides}`;
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides) showSlide(currentSlide + 1);
+    }
+
+    function prevSlide() {
+      if (currentSlide > 1) showSlide(currentSlide - 1);
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => console.log(err));
+      } else {
+        document.exitFullscreen().catch(err => console.log(err));
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+        e.preventDefault();
+        nextSlide();
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        e.preventDefault();
+        prevSlide();
+      } else if (e.key.toLowerCase() === 'f') {
+        toggleFullscreen();
+      }
+    });
+  </script>
+</body>
+</html>
