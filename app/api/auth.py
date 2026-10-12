@@ -1,6 +1,6 @@
 """Authentication Endpoints: Registration, Login with Lockout Defense, and Logout."""
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -12,6 +12,7 @@ from app.core.security import (
     is_account_locked,
     record_failed_login,
     reset_failed_logins,
+    revoke_token,
     validate_password_strength,
     verify_password,
 )
@@ -159,11 +160,23 @@ def login_user(req: UserLoginRequest, response: Response, db: Session = Depends(
 
 @router.post("/logout", summary="Logout and invalidate session cookie")
 def logout_user(
+    request: Request,
     response: Response,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Clear session cookie and log security audit event."""
+    """Clear session cookie, revoke token server-side, and log security audit event."""
+    token = request.cookies.get("session_token")
+    if not token and "Authorization" in request.headers:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:].strip()
+        elif auth_header.startswith("bearer "):
+            token = auth_header[7:].strip()
+
+    if token:
+        revoke_token(token)
+
     response.delete_cookie(key="session_token")
     record_audit_event(
         db,

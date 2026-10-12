@@ -34,13 +34,13 @@ def get_current_user(
     """
     token: Optional[str] = None
 
-    # 1. Check HttpOnly cookie
-    if "session_token" in request.cookies:
-        token = request.cookies.get("session_token")
-
-    # 2. Check Bearer Authorization header as fallback
-    elif auth_header and auth_header.credentials:
+    # 1. Check explicit Bearer Authorization header first
+    if auth_header and auth_header.credentials:
         token = auth_header.credentials
+
+    # 2. Fall back to secure HttpOnly cookie for web dashboard
+    elif "session_token" in request.cookies:
+        token = request.cookies.get("session_token")
 
     if not token:
         raise HTTPException(

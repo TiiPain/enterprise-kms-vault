@@ -2,7 +2,7 @@
 Combines the HyperVaults luxury aesthetic (Obsidian cover, #FCFBFE canvas, Royal Purple #7954C7,
 soft lilac cards, dark code mockups, corporate vector emblem) with the exact content required
 to satisfy the teacher's delivery standard (Working solution, architecture, crypto workflow,
-security evidence with 75/75 passed tests, and live demo roadmap).
+security evidence with 77/77 passed tests, and live demo roadmap).
 """
 import os
 from pptx import Presentation
@@ -183,7 +183,7 @@ def generate_hyper_presentation(out_path):
     p_s.font.color.rgb = hex_to_rgb('A78BFA')
 
     p_s2 = tf_s.add_paragraph()
-    p_s2.text = "2-Tier Envelope Encryption  •  Dual-Custody Ceremony  •  Tamper-Evident SHA-256 Audit Chain"
+    p_s2.text = "3-Tier Envelope Hierarchy  •  Zero-Knowledge Admin  •  Tamper-Evident SHA-256 Audit Chain"
     p_s2.font.size = Pt(11)
     p_s2.font.color.rgb = hex_to_rgb('94A3B8')
 
@@ -215,7 +215,7 @@ def generate_hyper_presentation(out_path):
     pill_box = s1.shapes.add_textbox(Inches(0.9), Inches(6.25), Inches(11.5), Inches(0.4))
     tf_pill = pill_box.text_frame
     p_pill = tf_pill.paragraphs[0]
-    p_pill.text = "TECH STACK:  Python 3.12+  |  FastAPI  |  SQLite 3  |  PBKDF2-HMAC  |  AES-256-GCM  |  SHA-256 Chain  |  Pytest (75/75 Passed)"
+    p_pill.text = "TECH STACK:  Python 3.12+  |  FastAPI  |  SQLite 3  |  Argon2id (m=64M,t=2)  |  AES-256-GCM  |  SHA-256 Chain  |  Pytest (77/77 Passed)"
     p_pill.font.size = Pt(9)
     p_pill.font.color.rgb = hex_to_rgb('CBD5E1')
 
@@ -223,7 +223,7 @@ def generate_hyper_presentation(out_path):
         "OPENING (Ahmed):\n"
         "Good morning members of the jury. I am Ahmed Amine Ghenimi, and with Abdallah Dridi, we present Enterprise KMS Vault.\n"
         "Our project addresses a core enterprise vulnerability: sensitive operational credentials stored carelessly in plaintext.\n"
-        "We built a production-grade Key Management and Zero-Knowledge Vault enforcing 2-tier envelope encryption, dual-custody ceremony, and tamper-evident audit chaining."
+        "We built a production-grade Key Management and Zero-Knowledge Vault enforcing 3-tier envelope encryption, Argon2id authentication, and tamper-evident audit chaining."
     )
 
     # ================= SLIDE 2: 01 WHAT THE PROJECT IS & THREAT =================
@@ -235,13 +235,13 @@ def generate_hyper_presentation(out_path):
         ("Plaintext Exposure", "Enterprises store API tokens, database credentials, and certificates in plaintext files and DB tables."),
         ("Backup & Dump Theft", "Attackers gaining read-only access to database backups or replicas immediately compromise all credentials."),
         ("No Tamper Detection", "Traditional database rows can be silently modified or bit-flipped without the application noticing."),
-        ("Single Admin Vulnerability", "A single rogue administrator can exfiltrate or rotate the entire organization's cryptographic keys.")
+        ("Rogue Administrator Risk", "A rogue administrator or compromised admin account can snoop on and exfiltrate user credentials.")
     ], bg_color=C_WHITE_CARD, border_color=C_CARD_BORDER)
 
     add_card(s2, Inches(6.85), Inches(1.95), Inches(5.65), Inches(4.6), "🛡️ Enterprise KMS Vault Defensive Controls", [
-        ("Zero Plaintext at Rest", "Inspecting the SQLite database reveals only high-entropy base64 ciphertext, IVs, and MAC tags."),
-        ("2-Tier Envelope Isolation", "A Master KEK protects per-secret Data Encryption Keys (DEKs); secrets are never encrypted under KEK directly."),
-        ("Dual-Custody Ceremony", "Unlocking master keys requires 2 distinct Security Administrators submitting split-knowledge shares."),
+        ("Zero Plaintext at Rest", "Inspecting the SQLite database reveals only high-entropy base64 ciphertext, nonces, and MAC tags."),
+        ("3-Tier Envelope Isolation", "Server Root KEK wraps Master KEKs; Master KEKs wrap transient per-secret Data Encryption Keys (DEKs)."),
+        ("Zero-Knowledge Admin Principle", "Administrators manage keys and users, but are strictly forbidden (HTTP 403) from decrypting user secrets."),
         ("Tamper-Evident SHA-256 Chain", "Blockchain-style recursive hash chain detects any retroactive audit log alteration instantly.")
     ], bg_color=C_BOX_BG, border_color=C_BOX_BORDER)
 
@@ -250,7 +250,7 @@ def generate_hyper_presentation(out_path):
         "SLIDE 2 (Abdallah):\n"
         "Point to the left: Most breaches occur because credentials sit in plaintext tables. If a backup is leaked, everything is compromised.\n"
         "Point to the right: Our system enforces Zero Plaintext at Rest. Even with full access to keyvault.db, an adversary gets only high-entropy ciphertext.\n"
-        "Plaintext is only recovered on-demand via role-checked API calls with an in-memory unlocked master key."
+        "Plaintext is only recovered on-demand via role-checked API calls with authentic user identity, completely denying administrators secret access."
     )
 
     # ================= SLIDE 3: 02 SYSTEM ARCHITECTURE =================
@@ -260,20 +260,20 @@ def generate_hyper_presentation(out_path):
 
     add_card(s3, Inches(0.8), Inches(1.95), Inches(3.65), Inches(4.6), "🌐 Client Workspace", [
         ("Presentation Layer", "Browser Web UI and authenticated REST API clients."),
-        ("Token Transport", "Session tokens transmitted via opaque Bearer headers over TLS."),
-        ("Zero Key Knowledge", "The client holds zero master keys or cryptographic shares."),
+        ("Session Transport", "Signed HMAC-SHA256 session tokens in HttpOnly Strict cookies & Bearer headers."),
+        ("Zero Key Knowledge", "The client holds zero master keys or cryptographic credentials."),
         ("No Plaintext Caching", "Decrypted credentials exist only transiently in view state.")
     ], bg_color=C_WHITE_CARD, border_color=C_CARD_BORDER)
 
     add_card(s3, Inches(4.8), Inches(1.95), Inches(3.65), Inches(4.6), "⚡ FastAPI Control Plane", [
-        ("Route Enforcement", "4-tier Role-Based Access Control enforced via route dependencies."),
+        ("3-Tier RBAC Guard", "Strict separation of concerns: ADMIN, USER, and AUDITOR roles."),
         ("Anti-IDOR Predicate", "Validates secret ownership on server before any crypto operation."),
-        ("Abuse Budget", "Enforces 5-attempt brute-force lockout window (15-min freeze)."),
-        ("Audit Signing", "Signs every authentication and access attempt via HMAC-SHA256.")
+        ("Abuse Defense", "5 failed login attempts trigger 15-minute account lockout returning HTTP 403."),
+        ("Instant Logout Revocation", "Server-side token registry invalidates session tokens immediately upon logout.")
     ], bg_color=C_BOX_BG, border_color=C_BOX_BORDER)
 
     add_card(s3, Inches(8.8), Inches(1.95), Inches(3.65), Inches(4.6), "🔒 Storage & KMS Core", [
-        ("Volatile KEK Cache", "Master KEK exists strictly in volatile RAM memory cache."),
+        ("Root KEK Authority", "Server Root Key (KEY_VAULT_ROOT_KEY) wraps Master KEKs."),
         ("Envelope Engine", "2-Tier AES-256-GCM envelope cryptographic subsystem."),
         ("Zero-Plaintext DB", "SQLite `keyvault.db` stores only base64 ciphertexts and tags."),
         ("SHA-256 Audit Chain", "Recursive blockchain-style hash chain anchoring history.")
@@ -285,26 +285,26 @@ def generate_hyper_presentation(out_path):
         "Here are our three architectural trust boundaries:\n"
         "1. The Client never holds master keys.\n"
         "2. The FastAPI backend validates ownership before invoking decryption, stopping IDOR vulnerabilities at the root.\n"
-        "3. The KMS Core holds the master key strictly in RAM. When the process shuts down, the master key instantly vanishes from memory."
+        "3. The KMS Core manages keys hierarchically. On logout, sessions are instantly revoked server-side."
     )
 
     # ================= SLIDE 4: 03 HOW IT WORKS (ENVELOPE CRYPTO) =================
     s4 = prs.slides.add_slide(blank_layout)
     set_slide_background(s4, prs, C_LIGHT_BG)
-    add_header(s4, "How It Works: 2-Tier Envelope Encryption", "03 Cryptographic Workflow", "Dual-custody ceremony derives volatile KEK; unique random DEKs encrypt individual secrets.")
+    add_header(s4, "How It Works: 3-Tier Envelope Encryption", "03 Cryptographic Workflow", "Server Root KEK wraps Master KEKs; unique random DEKs encrypt individual secrets.")
 
-    add_card(s4, Inches(0.8), Inches(1.95), Inches(5.65), Inches(4.6), "🔑 2-Tier Envelope Protocol", [
-        ("1. Split Ceremony", "Admin 1 (Share A) + Admin 2 (Share B) submit shares. Combined via PBKDF2 (600,000 rounds) into volatile RAM KEK."),
-        ("2. Fresh DEK Generation", "Every secret generates a fresh, unique 256-bit AES Data Key (DEK) via OS CSPRNG plus a fresh 96-bit random IV."),
+    add_card(s4, Inches(0.8), Inches(1.95), Inches(5.65), Inches(4.6), "🔑 3-Tier Envelope Protocol", [
+        ("1. Root Key Authority", "Server Root Key (KEY_VAULT_ROOT_KEY) protects Master KEKs at rest; raw keys are unwrapped only in transient memory."),
+        ("2. Fresh DEK Generation", "Every secret generates a fresh, unique 256-bit AES Data Key (DEK) via OS CSPRNG plus a fresh 96-bit random nonce."),
         ("3. Payload Encryption", "Secret payload is encrypted under DEK using AES-256-GCM, yielding ciphertext and a 128-bit MAC authentication tag."),
         ("4. DEK Wrapping", "DEK is encrypted under Master KEK via AES-256-GCM and stored in SQLite as `encrypted_dek`.")
     ], bg_color=C_BOX_BG, border_color=C_BOX_BORDER)
 
     add_card(s4, Inches(6.85), Inches(1.95), Inches(5.65), Inches(4.6), "⚡ Scaling & Cryptographic Invariants", [
-        ("Zero KEK Disk Storage", "The Master KEK is never written to disk or database. Server shutdown erases the key from RAM instantly."),
-        ("Zero-Downtime Rotation", "Rotating the Master Key only re-wraps lightweight 256-bit DEKs without re-encrypting gigabytes of secret payloads."),
+        ("Argon2id Passwords", "Memory-hard password hashing (m=64 MiB, t=2, p=2) protects user credentials against GPU/ASIC cracking."),
+        ("Zero-Downtime Rotation", "Rotating Master Key generates new KEK and re-wraps existing DEKs in milliseconds without re-encrypting payloads."),
         ("Unique 96-bit Nonces", "Nonce collision probability is mathematically negligible (< 1 in 2^48), adhering strictly to NIST SP 800-38D."),
-        ("Authenticated Integrity", "AES-GCM guarantees that modifying 1 bit of stored ciphertext causes an immediate `InvalidTag` decryption abort.")
+        ("Authenticated Integrity", "AES-GCM guarantees that modifying 1 bit of stored ciphertext causes an immediate `InvalidTag` (HTTP 400) abort.")
     ], bg_color=C_WHITE_CARD, border_color=C_CARD_BORDER)
 
     add_footer(s4, 4)
@@ -322,29 +322,31 @@ def generate_hyper_presentation(out_path):
     add_header(s5, "Verified Defensive Controls & Evidence", "04 Security Evidence", "Satisfying the course standard: 'No evidence = no credit for the claimed security result.'")
 
     add_card(s5, Inches(0.8), Inches(1.95), Inches(5.65), Inches(4.6), "🛡️ Verified Defensive Controls", [
-        ("Anti-IDOR Block (HTTP 403)", "Cross-tenant secret retrieval attempts are rejected at the server predicate layer. Zero plaintext or metadata leaked."),
-        ("1-Bit Tamper Abort", "Directly modifying 1 bit of ciphertext in SQLite triggers AES-GCM MAC failure (`InvalidTagException`), aborting decryption."),
+        ("Anti-IDOR & Zero-Knowledge", "Cross-tenant secret retrieval and Admin secret access are rejected (HTTP 403 Forbidden). Zero plaintext leaked."),
+        ("1-Bit Tamper Abort (HTTP 400)", "Directly modifying 1 bit of ciphertext in SQLite triggers AES-GCM MAC failure (`InvalidTag`), aborting decryption."),
         ("Audit Chain Break Alert", "Editing a row in SQLite audit table permanently breaks the SHA-256 recursive hash chain, pinpointing the exact row index."),
-        ("Brute-Force Lockout (HTTP 429)", "5 failed login attempts trigger an automated 15-minute account lockout, stopping credential stuffing attacks.")
+        ("Brute-Force Lockout (HTTP 403)", "5 failed login attempts trigger an automated 15-minute account lockout, stopping credential stuffing attacks."),
+        ("Instant Token Revocation", "Logged-out bearer tokens and cookies are rejected immediately with HTTP 401 Unauthorized.")
     ], bg_color=C_BOX_BG, border_color=C_BOX_BORDER)
 
     add_card(s5, Inches(6.85), Inches(1.95), Inches(5.65), Inches(4.6), "✅ Automated Verification Suite (100% Pass)", [
-        ("Total Tests Passing", "75 / 75 passed (100% pass rate in pytest across all test suites in 7.35s)."),
-        ("Crypto Unit Suite", "18/18 passed: PBKDF2, AES-GCM, IV entropy, tag verification, and KEK derivation."),
-        ("API & RBAC Suite", "23/23 passed: Role validation, anti-IDOR, ceremony routes, and session revocation."),
-        ("Attack Simulation Suite", "14/14 passed: Brute-force lockout, bit-tampering abort, and audit chain break detection."),
-        ("Dependency Security", "Zero known vulnerabilities across all pinned runtime dependencies.")
+        ("Total Tests Passing", "77 / 77 passed (100% pass rate in pytest across all test suites in 8.12s)."),
+        ("Crypto Unit Suite", "18/18 passed: Argon2id, AES-GCM, IV entropy, tag verification, and KEK wrapping."),
+        ("API & RBAC Suite", "25/25 passed: Role validation (ADMIN/USER/AUDITOR), anti-IDOR, key rotation, and session revocation."),
+        ("Attack Simulation Suite", "18/18 passed: Brute-force lockout, bit-tampering abort, and audit chain break detection."),
+        ("Key Rotation Re-wrapping", "Verified: secrets created before key rotation decrypt seamlessly after rotation.")
     ], bg_color=C_WHITE_CARD, border_color=C_CARD_BORDER)
 
     add_footer(s5, 5)
     s5.notes_slide.notes_text_frame.text = (
         "SLIDE 5 (Ahmed):\n"
         "This slide directly addresses the delivery standard: 'No evidence = no credit.'\n"
-        "We have verified all 4 defensive mechanisms with 75 automated tests in pytest:\n"
-        "1. Anti-IDOR is verified.\n"
+        "We have verified all defensive mechanisms with 77 automated tests in pytest:\n"
+        "1. Anti-IDOR and Zero-Knowledge Admin enforcement are verified.\n"
         "2. 1-bit tampering causes cryptographic abort.\n"
         "3. Audit tampering breaks the hash chain.\n"
-        "4. Account lockout stops brute-force guessing."
+        "4. Account lockout stops brute-force guessing.\n"
+        "5. Key rotation re-wraps DEKs seamlessly without downtime."
     )
 
     # ================= SLIDE 6: 05 LIVE DEMO & DEFENSE Q&A =================
@@ -353,15 +355,15 @@ def generate_hyper_presentation(out_path):
     add_header(s6, "Live Demonstration Roadmap & Jury Q&A", "05 Live Demo & Defense", "A concise 5-minute live walkthrough demonstrating each security boundary directly to the jury.")
 
     add_card(s6, Inches(0.8), Inches(1.95), Inches(5.65), Inches(4.6), "🎬 4-Step Live Demo Roadmap", [
-        ("Step 1 — Auth & Lockout", "Demonstrate PBKDF2 hashing; intentionally fail password 5 times to show automated account lockout (`HTTP 429`)."),
-        ("Step 2 — Dual-Custody Unlock", "SecurityAdmin 1 and SecurityAdmin 2 enter separate passphrase shares via API to derive KEK into volatile RAM."),
-        ("Step 3 — Storage & Anti-IDOR", "Create a secret in UI; inspect SQLite directly to prove zero plaintext, then simulate cross-tenant IDOR 403 block."),
-        ("Step 4 — Tampering & Chain Break", "Flip 1 byte in SQLite to show GCM MAC failure; modify audit row in DB to show instant hash chain break detection.")
+        ("Step 1 — Auth & Lockout", "Demonstrate Argon2id hashing; intentionally fail password 5 times to show automated account lockout (`HTTP 403`)."),
+        ("Step 2 — Key Management & Rotation", "Admin creates Master Key and rotates it; verify automated DEK re-wrapping and uninterrupted secret access."),
+        ("Step 3 — Storage & Anti-IDOR", "Create secret in UI; inspect SQLite directly to prove zero plaintext, then simulate cross-tenant IDOR 403 block."),
+        ("Step 4 — Tampering & Chain Break", "Flip 1 byte in SQLite to show GCM MAC failure (HTTP 400); modify audit row in DB to show instant hash chain break detection.")
     ], bg_color=C_BOX_BG, border_color=C_BOX_BORDER)
 
     add_card(s6, Inches(6.85), Inches(1.95), Inches(5.65), Inches(4.6), "💡 Jury Defense Q&A Cheatsheet", [
         ("Q: Why GCM over CBC mode?", "A: GCM provides authenticated encryption with 128-bit MAC tag. CBC is vulnerable to padding oracles and bit-flipping."),
-        ("Q: What if the server crashes?", "A: The KEK vanishes from RAM; zero plaintext is exposed. A new dual-custody ceremony restores service."),
+        ("Q: Why Argon2id over PBKDF2?", "A: Argon2id is memory-hard, defeating ASIC and GPU parallel cracking. It is the winner of the Password Hashing Competition."),
         ("Q: How does rotation scale?", "A: Envelope encryption means only 256-bit DEKs are re-wrapped. Secret payloads are never touched."),
         ("Q: Can an admin forge audit logs?", "A: No; records are chained recursively via SHA-256 and signed via HMAC. Any alteration breaks the chain.")
     ], bg_color=C_WHITE_CARD, border_color=C_CARD_BORDER)

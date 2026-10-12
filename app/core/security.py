@@ -143,6 +143,22 @@ def reset_failed_logins(db: Session, user: User) -> None:
     db.commit()
 
 
+_REVOKED_TOKENS: set[str] = set()
+
+
+def revoke_token(token: str) -> None:
+    """Revoke a session token server-side immediately upon logout."""
+    if token:
+        _REVOKED_TOKENS.add(token.strip())
+
+
+def is_token_revoked(token: str) -> bool:
+    """Check if token is in server revocation list."""
+    if not token:
+        return True
+    return token.strip() in _REVOKED_TOKENS
+
+
 def generate_session_token() -> str:
     """Generate a cryptographically secure 256-bit URL-safe session token."""
     return secrets.token_urlsafe(32)
@@ -166,11 +182,13 @@ def create_session_token(user_id: str, role: str) -> str:
 
 
 def verify_session_token(token: str) -> Optional[Tuple[str, str]]:
-    """Verify session token cryptographic signature and expiration.
+    """Verify session token cryptographic signature, revocation status, and expiration.
 
     Returns:
-        Optional[Tuple[str, str]]: (user_id, role) if valid, None if expired or tampered.
+        Optional[Tuple[str, str]]: (user_id, role) if valid, None if expired, revoked, or tampered.
     """
+    if not token or is_token_revoked(token):
+        return None
     try:
         raw = base64.urlsafe_b64decode(token.encode("utf-8")).decode("utf-8")
         parts = raw.split(":")

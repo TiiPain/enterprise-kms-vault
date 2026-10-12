@@ -177,6 +177,32 @@ class TestAPIAuthentication:
         assert res_correct.status_code == 403
         assert "temporarily locked" in res_correct.json()["detail"]
 
+    def test_logout_revokes_token_server_side(self, client):
+        """Logout immediately revokes session token server-side (preventing reused bearer/cookie)."""
+        client.post(
+            "/api/v1/auth/register",
+            json={"username": "charlie_logout", "email": "charlie@test.local", "password": "CharliePassword!123"},
+        )
+        res_login = client.post(
+            "/api/v1/auth/login",
+            json={"username": "charlie_logout", "password": "CharliePassword!123"},
+        )
+        token = res_login.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # Profile accessible before logout
+        res_me = client.get("/api/v1/auth/me", headers=headers)
+        assert res_me.status_code == 200
+
+        # Logout revoking token
+        res_logout = client.post("/api/v1/auth/logout", headers=headers)
+        assert res_logout.status_code == 200
+
+        # Subsequent call with the same token is rejected
+        res_after = client.get("/api/v1/auth/me", headers=headers)
+        assert res_after.status_code == 401
+
+
 
 class TestAPISecretsAndRBAC:
     """Two-tier envelope encryption, Anti-IDOR, and Zero-Knowledge tests."""
@@ -327,6 +353,51 @@ class TestAPIAuditAndKeys:
         res_rotate = client.post("/api/v1/keys/k-finance-v1/rotate", headers=headers_admin)
         assert res_rotate.status_code == 200
         assert res_rotate.json()["key_version"] == 2
+
+    def test_master_key_rotation_rewraps_existing_secrets_and_preserves_decryption(self, client):
+        """Zero-downtime key rotation: secrets created before rotation are re-wrapped and decrypt correctly."""
+        headers_admin = self._login(client, "superadmin", "AdminSecurePassword123!")
+
+        # 1. Create a dedicated master key
+        client.post(
+            "/api/v1/keys",
+            json={"key_id": "k-ops-v1", "key_name": "Ops Master KEK"},
+            headers=headers_admin,
+        )
+
+        # 2. Register Alice and create a secret under this master key
+        client.post(
+            "/api/v1/auth/register",
+            json={"username": "alice_rot", "email": "alice_rot@test.local", "password": "AlicePassword!123"},
+        )
+        headers_alice = self._login(client, "alice_rot", "AlicePassword!123")
+        res_secret = client.post(
+            "/api/v1/secrets",
+            json={
+                "secret_name": "PreRotationSecret",
+                "plaintext": "SuperConfidentialData123",
+                "key_id": "k-ops-v1",
+            },
+            headers=headers_alice,
+        )
+        assert res_secret.status_code == 201
+        secret_id = res_secret.json()["id"]
+
+        # Verify secret decrypts before rotation
+        res_dec_before = client.get(f"/api/v1/secrets/{secret_id}", headers=headers_alice)
+        assert res_dec_before.status_code == 200
+        assert res_dec_before.json()["plaintext"] == "SuperConfidentialData123"
+
+        # 3. Rotate the master key
+        res_rotate = client.post("/api/v1/keys/k-ops-v1/rotate", headers=headers_admin)
+        assert res_rotate.status_code == 200
+        assert res_rotate.json()["key_version"] == 2
+
+        # 4. Verify secret still decrypts seamlessly after rotation
+        res_dec_after = client.get(f"/api/v1/secrets/{secret_id}", headers=headers_alice)
+        assert res_dec_after.status_code == 200
+        assert res_dec_after.json()["plaintext"] == "SuperConfidentialData123"
+
 
     def test_auditor_can_verify_audit_integrity(self, client):
         """Auditor can verify cryptographic SHA-256 and HMAC audit chain."""

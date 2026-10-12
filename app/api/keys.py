@@ -9,7 +9,7 @@ from app.api.deps import get_db, require_admin
 from app.config import settings
 from app.crypto.audit_chain import record_audit_event
 from app.crypto.envelope import EnvelopeCryptoEngine
-from app.models.database import MasterKey, User
+from app.models.database import MasterKey, User, VaultSecret
 from app.models.schemas import KeyCreateRequest, KeyResponse
 
 router = APIRouter(prefix="/keys", tags=["KMS Key Management"])
@@ -128,12 +128,44 @@ def rotate_master_key(
             detail=f"Master Key '{key_id}' not found",
         )
 
-    # Generate new raw KEK
-    raw_kek = EnvelopeCryptoEngine.generate_kek()
-    root_kek = settings.get_root_kek_bytes()
-    wrapped_envelope = EnvelopeCryptoEngine.wrap_key(kek=root_kek, target_key=raw_kek)
-    del raw_kek
+    # 1. Unwrap current (old) Master KEK
+    old_master_kek = unwrap_master_kek(master_key.encrypted_key_bytes)
 
+    # 2. Generate new raw KEK
+    new_raw_kek = EnvelopeCryptoEngine.generate_kek()
+
+    # 3. Zero-downtime DEK re-wrapping: re-encrypt all existing secret DEKs with the new KEK
+    secrets = db.execute(
+        select(VaultSecret).where(VaultSecret.key_id == master_key.id)
+    ).scalars().all()
+
+    for secret in secrets:
+        # Unwrap transient DEK using the old master KEK
+        transient_dek = EnvelopeCryptoEngine.unwrap_key(
+            kek=old_master_kek,
+            b64_wrapped_key=secret.encrypted_dek,
+            b64_nonce=secret.dek_nonce,
+            b64_tag=secret.dek_tag,
+        )
+        # Re-wrap transient DEK under the new master KEK
+        new_dek_envelope = EnvelopeCryptoEngine.wrap_key(
+            kek=new_raw_kek,
+            target_key=transient_dek,
+        )
+        del transient_dek
+
+        secret.encrypted_dek = new_dek_envelope["wrapped_key"]
+        secret.dek_nonce = new_dek_envelope["nonce"]
+        secret.dek_tag = new_dek_envelope["tag"]
+
+    # 4. Wrap new KEK with Server Root KEK
+    root_kek = settings.get_root_kek_bytes()
+    wrapped_envelope = EnvelopeCryptoEngine.wrap_key(kek=root_kek, target_key=new_raw_kek)
+
+    del old_master_kek
+    del new_raw_kek
+
+    # 5. Persist updated master key and re-wrapped secret DEKs
     master_key.encrypted_key_bytes = serialize_wrapped_key(wrapped_envelope)
     master_key.key_version += 1
     db.commit()
